@@ -34,7 +34,7 @@ public partial class MapGen : Node2D
     void BuildShip()
     {
         ship = new CharacterBody2D { Name = "PlayerShip", Position = GetViewportRect().Size / 2, CollisionLayer = 1, CollisionMask = 2 };
-        ship.AddChild(new Sprite2D { Texture = GD.Load<Texture2D>("res://spaceship.png"), Scale = Vector2.One * 1.5f });
+        ship.AddChild(new Sprite2D { Texture = GD.Load<Texture2D>("res://Protagonist_Ship.png"), Scale = Vector2.One * 1.5f });
         ship.AddChild(new CollisionShape2D { Shape = new CircleShape2D { Radius = ShipRadius } }); AddChild(ship);
     }
     void BuildAsteroidMaze()
