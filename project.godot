@@ -12,7 +12,6 @@ config_version=5
 
 config/name="conquest"
 config/features=PackedStringArray("4.7", "C#", "Mobile")
-run/main_scene="res://first_scene.tscn"
 
 [display]
 

@@ -1,0 +1,19 @@
+[gd_scene format=3 uid="uid://bp6gsbr82vhiq"]
+
+[ext_resource type="PackedScene" uid="uid://c8vfwsrsb8j1m" path="res://scenes/actors/Player.tscn" id="1_80nbo"]
+
+[node name="Game" type="Node2D" unique_id=1763646068]
+
+[node name="GameState" type="Node" parent="." unique_id=200173671]
+
+[node name="World" type="Node2D" parent="." unique_id=1737077769]
+
+[node name="EntityRegistry" type="Node" parent="." unique_id=2145574615]
+
+[node name="ProgressionManager" type="Node" parent="." unique_id=587658215]
+
+[node name="CameraRig" type="Node2D" parent="." unique_id=1303521827]
+
+[node name="UI" type="CanvasLayer" parent="." unique_id=357686169]
+
+[node name="Player" parent="." unique_id=1499827582 instance=ExtResource("1_80nbo")]

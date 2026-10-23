@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bvyk61vqdio47"
-path="res://.godot/imported/Protagonist_Ship.png-a8aee2801e3b8c6d30c4bff2d748cbe1.ctex"
+path="res://.godot/imported/Protagonist_Ship.png-7524b2a6bc4ad38b44d8344b4b5158a5.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://Protagonist_Ship.png"
-dest_files=["res://.godot/imported/Protagonist_Ship.png-a8aee2801e3b8c6d30c4bff2d748cbe1.ctex"]
+dest_files=["res://.godot/imported/Protagonist_Ship.png-7524b2a6bc4ad38b44d8344b4b5158a5.ctex"]
 
 [params]
 

@@ -13,43 +13,43 @@ Godot scenes are reusable templates: load a `PackedScene`, call `Instantiate()`,
 ```text
 res://
   scenes/
-    game/
-      Game.tscn
-      World.tscn
-      CameraRig.tscn
-      HUD.tscn
-      LevelUpPanel.tscn
-    actors/
-      Player.tscn
-      ActiveEnemy.tscn
-      PassiveEntity.tscn
-    combat/
-      Bullet.tscn
-      DamageHitbox.tscn        # optional reusable hitbox
-    resources/
-      ResourceDrop.tscn
-    world/
-      WorldChunk.tscn
-      StaticObstacle.tscn
+	game/
+	  Game.tscn
+	  World.tscn
+	  CameraRig.tscn
+	  HUD.tscn
+	  LevelUpPanel.tscn
+	actors/
+	  Player.tscn
+	  ActiveEnemy.tscn
+	  PassiveEntity.tscn
+	combat/
+	  Bullet.tscn
+	  DamageHitbox.tscn        # optional reusable hitbox
+	resources/
+	  ResourceDrop.tscn
+	world/
+	  WorldChunk.tscn
+	  StaticObstacle.tscn
   scripts/
-    game/Game.cs
-    game/GameState.cs
-    world/WorldGenerator.cs
-    world/WorldStreamer.cs
-    world/EntityRecord.cs
-    world/EntityRegistry.cs
-    actors/PlayerController.cs
-    actors/EnemyController.cs
-    actors/PassiveEntityController.cs
-    combat/BulletController.cs
-    resources/ResourceDropController.cs
-    progression/ProgressionManager.cs
-    progression/BuffDefinition.cs
-    ui/HudController.cs
+	game/Game.cs
+	game/GameState.cs
+	world/WorldGenerator.cs
+	world/WorldStreamer.cs
+	world/EntityRecord.cs
+	world/EntityRegistry.cs
+	actors/PlayerController.cs
+	actors/EnemyController.cs
+	actors/PassiveEntityController.cs
+	combat/BulletController.cs
+	resources/ResourceDropController.cs
+	progression/ProgressionManager.cs
+	progression/BuffDefinition.cs
+	ui/HudController.cs
   data/
-    enemies/                 # Resource files for enemy definitions
-    buffs/                   # Resource files for random buffs
-    maps/                    # Optional generation presets
+	enemies/                 # Resource files for enemy definitions
+	buffs/                   # Resource files for random buffs
+	maps/                    # Optional generation presets
 ```
 
 Use C# consistently because the existing project is configured with the C# feature and already has C# gameplay code. Use `.tscn` files for reusable node hierarchies and `.tres`/custom `Resource` files for data that should not be tied to a scene instance.
@@ -118,7 +118,7 @@ Create `CameraRig.tscn`:
 CameraRig (Node2D)
 ├── Camera2D (Camera2D)              # visible window
 └── ActivationSensor (Area2D)         # larger simulation/draw radius
-    └── CollisionShape2D (RectangleShape2D)
+	└── CollisionShape2D (RectangleShape2D)
 ```
 
 Make `CameraRig` follow the player by setting its position to the player position or by making it a child of the player. Prefer a separate rig node so camera smoothing, shake, limits, and sensor sizing remain independent from player movement. Set `Camera2D` limits from the generated map bounds.
