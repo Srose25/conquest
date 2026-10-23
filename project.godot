@@ -11,6 +11,7 @@ config_version=5
 [application]
 
 config/name="conquest"
+run/main_scene="uid://bp6gsbr82vhiq"
 config/features=PackedStringArray("4.7", "C#", "Mobile")
 
 [display]
