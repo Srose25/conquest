@@ -1,0 +1,15 @@
+[gd_scene format=3 uid="uid://c6kt303fr3pb2"]
+
+[node name="World" type="Node2D" unique_id=1122037106]
+
+[node name="Background" type="Node2D" parent="." unique_id=589864143]
+
+[node name="Chunks" type="Node2D" parent="." unique_id=1128376757]
+
+[node name="ActiveEntities" type="Node2D" parent="." unique_id=1799686052]
+
+[node name="PassiveEntities" type="Node2D" parent="." unique_id=924368903]
+
+[node name="ResourceDrops" type="Node2D" parent="." unique_id=669048075]
+
+[node name="WorldBounds" type="StaticBody2D" parent="." unique_id=760992968]

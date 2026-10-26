@@ -1,0 +1,9 @@
+[gd_scene format=3 uid="uid://denvr0fnhiym0"]
+
+[node name="PassiveEntity" type="Node2D" unique_id=1147627767]
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=1524487585]
+
+[node name="StaticBody2D" type="StaticBody2D" parent="." unique_id=600579655]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D" unique_id=1785301823]
