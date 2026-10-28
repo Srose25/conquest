@@ -1,3 +1,13 @@
 [gd_scene format=3 uid="uid://c8vfwsrsb8j1m"]
 
-[node name="Player" type="Node2D" unique_id=1499827582]
+[node name="Player" type="CharacterBody2D" unique_id=1311028246]
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=1759036337]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1530848836]
+
+[node name="Cursor" type="Marker2D" parent="." unique_id=526303195]
+
+[node name="FireCooldown" type="Timer" parent="." unique_id=852937108]
+
+[node name="AimPoint" type="Node2D" parent="." unique_id=67084337]
