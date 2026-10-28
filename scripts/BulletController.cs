@@ -40,7 +40,7 @@ public partial class BulletController : Area2D
 			QueueFree();
 	}
 
-	public override void _Draw() => DrawCircle(Vector2.Zero, 4.0f, new Color("7fffd4"));
+	public override void _Draw() => DrawCircle(Vector2.Zero, 4.0f, new Color("00ffff"));
 
 	private void OnBodyEntered(Node body)
 	{

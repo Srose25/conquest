@@ -31,8 +31,8 @@ public partial class ResourceDropController : Area2D
 
 	public override void _Draw()
 	{
-		DrawCircle(Vector2.Zero, 8.0f, new Color("f5c542"));
-		DrawCircle(Vector2.Zero, 4.0f, new Color("fff1a8"));
+		DrawCircle(Vector2.Zero, 8.0f, new Color("fff1a8"));
+		DrawCircle(Vector2.Zero, 4.0f, new Color("f5c542"));
 	}
 
 	private void OnBodyEntered(Node body)
