@@ -1,15 +1,96 @@
+#nullable enable
 using Godot;
-using System;
 
-public partial class PlayerController : Node
+/// <summary>Handles player movement, cursor aiming, and firing reusable bullet scenes.</summary>
+public partial class PlayerController : CharacterBody2D
 {
-	// Called when the node enters the scene tree for the first time.
+	[Export] public float MoveSpeed { get; set; } = 255.0f;
+	[Export] public float FireCooldownSeconds { get; set; } = 0.16f;
+	[Export] public float BulletSpeed { get; set; } = 630.0f;
+	[Export] public float MuzzleOffset { get; set; } = 26.0f;
+	[Export] public PackedScene? BulletScene { get; set; }
+
+	private Timer _fireCooldown = null!;
+	private Marker2D _muzzle = null!;
+
 	public override void _Ready()
 	{
+		_fireCooldown = GetNode<Timer>("FireCooldown");
+		_muzzle = GetNode<Marker2D>("Cursor");
+		_fireCooldown.WaitTime = FireCooldownSeconds;
+		_fireCooldown.OneShot = true;
+		// The ship artwork faces local up; the rotation correction maps this to the aim direction.
+		_muzzle.Position = Vector2.Up * MuzzleOffset;
+
+		// Keep the exported reference editor-configurable, but recover if the
+		// serialized C# property is missing or stale in the scene file.
+		BulletScene ??= GD.Load<PackedScene>("res://scenes/combat/Bullet.tscn");
+		if (BulletScene == null)
+			GD.PrintErr("PlayerController could not load Bullet.tscn.");
 	}
 
-	// Called every frame. 'delta' is the elapsed time since the previous frame.
-	public override void _Process(double delta)
+	public override void _PhysicsProcess(double delta)
 	{
+		Velocity = GetMovementInput() * MoveSpeed;
+		MoveAndSlide();
+		Vector2 direction = AimAtCursor();
+		if (Input.IsMouseButtonPressed(MouseButton.Left) && _fireCooldown.TimeLeft <= 0.0)
+			Fire(direction);
+	}
+
+	private Vector2 GetMovementInput()
+	{
+		Vector2 movement = new(
+			(Input.IsKeyPressed(Key.D) ? 1.0f : 0.0f) - (Input.IsKeyPressed(Key.A) ? 1.0f : 0.0f),
+			(Input.IsKeyPressed(Key.S) ? 1.0f : 0.0f) - (Input.IsKeyPressed(Key.W) ? 1.0f : 0.0f));
+		return movement.LengthSquared() > 1.0f ? movement.Normalized() : movement;
+	}
+
+	private Vector2 AimAtCursor()
+	{
+		Vector2 direction = GlobalPosition.DirectionTo(GetGlobalMousePosition());
+		if (direction.LengthSquared() <= Mathf.Epsilon)
+			return Vector2.Right;
+		// The ship artwork faces upward; Godot's zero rotation points right.
+		Rotation = direction.Angle() + Mathf.Pi / 2.0f;
+		return direction.Normalized();
+	}
+
+	private void Fire(Vector2 direction)
+	{
+		//Debugging line
+		if (BulletScene == null)
+		{
+			GD.Print($"Fire called. BulletScene is null: {BulletScene == null}");
+			return;
+		}
+
+		//Debugging line
+		//if (BulletScene != null)
+		//{
+		//	GD.Print($"Bullet scene path: {BulletScene.ResourcePath}");
+		//	
+		//}
+		//else
+		//{
+		//	GD.PrintErr("BulletScene was not assigned.");
+		//	return;
+		//}
+
+		Area2D bullet = BulletScene.Instantiate<Area2D>();
+		//GD.Print($"Bullet instantiated: {bullet.GetType().Name}");
+
+		//Debugging line
+		//GD.Print($"Bullet instantiated: {bullet}");
+
+		Node parent = GetParent();
+		parent.AddChild(bullet);
+		bullet.GlobalPosition = _muzzle.GlobalPosition;
+		if (bullet is BulletController controller)
+		{
+			//GD.Print($"Bullet initialized at {bullet.GlobalPosition}, direction: {direction}");
+			controller.Initialize(direction, BulletSpeed, this);
+		}
+		_fireCooldown.Start();
 	}
 }
