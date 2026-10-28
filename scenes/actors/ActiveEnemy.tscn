@@ -6,8 +6,14 @@
 [sub_resource type="CircleShape2D" id="CircleShape2D_enemy"]
 radius = 22.0
 
+[sub_resource type="CircleShape2D" id="CircleShape2D_detection"]
+radius = 24.0
+
 [node name="ActiveEnemy" type="CharacterBody2D" unique_id=1439996129]
+collision_mask = 6
 script = ExtResource("1_enemy")
+resource_yield_min = 1
+resource_yield_max = 2
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=1242904315]
 texture = ExtResource("2_meteor")
@@ -18,6 +24,9 @@ shape = SubResource("CircleShape2D_enemy")
 [node name="DetectionArea" type="Area2D" parent="." unique_id=1059851166]
 collision_layer = 0
 collision_mask = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="DetectionArea"]
+shape = SubResource("CircleShape2D_detection")
 
 [node name="AttackTimer" type="Timer" parent="." unique_id=2079557310]
 wait_time = 1.0

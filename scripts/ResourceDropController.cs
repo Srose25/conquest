@@ -22,11 +22,18 @@ public partial class ResourceDropController : Area2D
 		PackedScene? scene = GD.Load<PackedScene>("res://scenes/resources/ResourceDrop.tscn");
 		if (scene == null)
 			return;
-		ResourceDropController drop = scene.Instantiate<ResourceDropController>();
-		drop.Amount = amount;
 		Node? container = source.GetTree().CurrentScene?.GetNodeOrNull("World/ResourceDrops");
-		(container ?? source.GetParent() ?? source.GetTree().CurrentScene)?.AddChild(drop);
-		drop.GlobalPosition = position;
+		Node? parent = container ?? source.GetParent() ?? source.GetTree().CurrentScene;
+		if (parent == null)
+			return;
+		for (int i = 0; i < amount; i++)
+		{
+			ResourceDropController drop = scene.Instantiate<ResourceDropController>();
+			drop.Amount = 1;
+			parent.AddChild(drop);
+			float angle = i * Mathf.Tau / Mathf.Max(1, amount);
+			drop.GlobalPosition = position + Vector2.FromAngle(angle) * 12.0f;
+		}
 	}
 
 	public override void _Draw()
@@ -40,6 +47,7 @@ public partial class ResourceDropController : Area2D
 		if (body is not PlayerController player)
 			return;
 		player.AddResources(Amount);
+		player.RecoverHealth(1.0f);
 		EmitSignal(SignalName.Collected, Amount);
 		QueueFree();
 	}

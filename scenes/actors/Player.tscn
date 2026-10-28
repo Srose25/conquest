@@ -13,6 +13,7 @@ collision_layer = 1
 collision_mask = 2
 script = ExtResource("1_player")
 bullet_scene = ExtResource("3_bullet")
+max_health = 20.0
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=1759036337]
 scale = Vector2(1.5, 1.5)

@@ -10,7 +10,9 @@ using Godot;
 	[Export] public float BulletSpeed { get; set; } = 630.0f;
 	[Export] public float MuzzleOffset { get; set; } = 26.0f;
 	[Export] public PackedScene? BulletScene { get; set; }
-	[Export] public float MaxHealth { get; set; } = 10.0f;
+	[Export] public float MaxHealth { get; set; } = 20.0f;
+	[Export] public float CoastStopSeconds { get; set; } = 10.0f;
+	[Export] public float DirectionChangeSeconds { get; set; } = 0.9f;
 
 	public float Health { get; private set; }
 	public int Resources { get; private set; }
@@ -52,13 +54,59 @@ using Godot;
 			Resources += amount;
 	}
 
+	public void RecoverHealth(float amount)
+	{
+		if (amount > 0.0f)
+			Health = Mathf.Min(Mathf.Max(1.0f, MaxHealth), Health + amount);
+	}
+
 	public override void _PhysicsProcess(double delta)
 	{
-		Velocity = GetMovementInput() * MoveSpeed;
+		Vector2 input = GetMovementInput();
+		float step = (float)delta;
+		if (input == Vector2.Zero)
+		{
+			float coastDeceleration = MoveSpeed / Mathf.Max(0.1f, CoastStopSeconds);
+			Velocity = Velocity.MoveToward(Vector2.Zero, coastDeceleration * step);
+		}
+		else
+		{
+			Vector2 targetVelocity = input * MoveSpeed;
+			bool changingDirection = Velocity.LengthSquared() > 0.01f && Velocity.Dot(targetVelocity) < 0.0f;
+			float acceleration = MoveSpeed / Mathf.Max(0.1f, changingDirection ? DirectionChangeSeconds : 1.5f);
+			Velocity = Velocity.MoveToward(targetVelocity, acceleration * step);
+		}
+		Vector2 velocityBeforeAsteroidContacts = Velocity;
+		Vector2 positionBeforeAsteroidContacts = GlobalPosition;
 		MoveAndSlide();
+		HandleAsteroidContacts(velocityBeforeAsteroidContacts, positionBeforeAsteroidContacts, step);
 		Vector2 direction = AimAtCursor();
 		if (Input.IsMouseButtonPressed(MouseButton.Left) && _fireCooldown.TimeLeft <= 0.0)
 			Fire(direction);
+	}
+
+	private void HandleAsteroidContacts(Vector2 velocityBeforeContact, Vector2 positionBeforeContact, float delta)
+	{
+		bool hitAsteroid = false;
+		for (int i = 0; i < GetSlideCollisionCount(); i++)
+		{
+			if (GetSlideCollision(i).GetCollider() is not BreakableEntityController asteroid)
+				continue;
+
+			hitAsteroid = true;
+			float currentSpeed = velocityBeforeContact.Length();
+			if (currentSpeed > 0.01f)
+				asteroid.ApplyPush(GlobalPosition.DirectionTo(asteroid.GlobalPosition), currentSpeed);
+		}
+		if (!hitAsteroid)
+			return;
+
+		// Keep real collision resolution, but do not accept an impulse that launches the ship.
+		Velocity = velocityBeforeContact * 0.5f;
+		float maxAllowedDisplacement = velocityBeforeContact.Length() * delta + 4.0f;
+		Vector2 displacement = GlobalPosition - positionBeforeContact;
+		if (displacement.Length() > maxAllowedDisplacement)
+			GlobalPosition = positionBeforeContact + displacement.Normalized() * maxAllowedDisplacement;
 	}
 
 	private Vector2 GetMovementInput()

@@ -1,73 +1,156 @@
+#nullable enable
 using Godot;
-using System;
+using System.Collections.Generic;
 
+/// <summary>Continuously generates reusable entity scenes in chunks around the player.</summary>
 public partial class MapGen : Node2D
 {
-	const float ShipSpeed = 255, ShipRadius = 18, ShotCooldown = .16f;
-	readonly RandomNumberGenerator random = new();
-	CharacterBody2D ship = null!;
-	Label status = null!;
-	float nextShot;
-	int mined;
+	[Export] public PackedScene? PassiveEntityScene { get; set; }
+	[Export] public PackedScene? ActiveEnemyScene { get; set; }
+	[Export] public float ChunkSize { get; set; } = 480.0f;
+	[Export] public int GenerationRadius { get; set; } = 2;
+	[Export] public int PassiveEntitiesPerChunk { get; set; } = 5;
+	[Export] public int ActiveEnemiesPerChunk { get; set; } = 1;
+	[Export] public float PlayerClearanceRadius { get; set; } = 180.0f;
+	[Export] public float ActiveEnemySpawnClearanceRadius { get; set; } = 700.0f;
+
+	private readonly HashSet<Vector2I> _generatedChunks = new();
+	private readonly HashSet<Vector2I> _trackerChunksGenerated = new();
+	private Node2D _passiveEntities = null!;
+	private Node2D _activeEntities = null!;
+	private Node2D? _player;
+	private Vector2I _lastPlayerChunk = new(int.MinValue, int.MinValue);
+	private bool _initialGenerationComplete;
 
 	public override void _Ready()
 	{
-		random.Randomize(); QueueRedraw(); BuildShip(); BuildAsteroidMaze();
-		status = new Label { Position = new Vector2(16, 14), Text = "Ore mined: 0    WASD: thrust    Mouse: aim    Left click: mine" };
-		status.AddThemeColorOverride("font_color", new Color("b9e5ff")); AddChild(status);
+		PassiveEntityScene ??= GD.Load<PackedScene>("res://scenes/actors/PassiveEntity.tscn");
+		ActiveEnemyScene ??= GD.Load<PackedScene>("res://scenes/actors/ActiveEnemy.tscn");
+		_passiveEntities = GetNode<Node2D>("PassiveEntities");
+		_activeEntities = GetNode<Node2D>("ActiveEntities");
 	}
-	public override void _Draw()
-	{
-		var area = GetViewportRect(); DrawRect(area, new Color("07101d"));
-		for (var x = 0; x < area.Size.X; x += 64) DrawLine(new Vector2(x, 0), new Vector2(x, area.Size.Y), new Color("10223a"));
-		for (var y = 0; y < area.Size.Y; y += 64) DrawLine(new Vector2(0, y), new Vector2(area.Size.X, y), new Color("10223a"));
-	}
+
 	public override void _Process(double delta)
 	{
+		_player ??= GetTree().GetFirstNodeInGroup("player") as Node2D;
+		if (!IsInstanceValid(_player))
+			return;
+
+		Vector2I playerChunk = GetChunk(_player!.GlobalPosition);
+		if (playerChunk != _lastPlayerChunk)
+		{
+			GenerateChunksAround(playerChunk);
+			_lastPlayerChunk = playerChunk;
+		}
 		QueueRedraw();
-		var movement = new Vector2((Input.IsKeyPressed(Key.D) ? 1 : 0) - (Input.IsKeyPressed(Key.A) ? 1 : 0), (Input.IsKeyPressed(Key.S) ? 1 : 0) - (Input.IsKeyPressed(Key.W) ? 1 : 0));
-		ship.Velocity = movement.Normalized() * ShipSpeed; ship.MoveAndSlide();
-		ship.LookAt(GetGlobalMousePosition()); ship.Rotation += Mathf.Pi / 2; // art faces up; LookAt faces right
-		nextShot -= (float)delta;
-		if (Input.IsMouseButtonPressed(MouseButton.Left) && nextShot <= 0) { Shoot(); nextShot = ShotCooldown; }
 	}
-	void BuildShip()
-	{
-		ship = new CharacterBody2D { Name = "PlayerShip", Position = GetViewportRect().Size / 2, CollisionLayer = 1, CollisionMask = 2 };
-		ship.AddChild(new Sprite2D { Texture = GD.Load<Texture2D>("res://Sprites/Protagonist_Ship.png"), Scale = Vector2.One * 1.5f });
-		ship.AddChild(new CollisionShape2D { Shape = new CircleShape2D { Radius = ShipRadius } }); AddChild(ship);
-	}
-	void BuildAsteroidMaze()
-	{
-		var size = GetViewportRect().Size;
-		for (int row = 1; row < size.Y / 110; row++) { int gap = random.RandiRange(1, Math.Max(2, (int)size.X / 78 - 2)); for (int col = 0; col < size.X / 78; col++) if (col != gap && col != gap + 1) AddAsteroid(new Vector2(45 + col * 78, 55 + row * 110), row % 3 == 0); }
-		for (int col = 1; col < size.X / 155; col++) { int gap = random.RandiRange(1, Math.Max(2, (int)size.Y / 90 - 2)); for (int row = 0; row < size.Y / 90; row++) if (row != gap && row != gap + 1) AddAsteroid(new Vector2(78 + col * 155, 45 + row * 90), false); }
-	}
-	void AddAsteroid(Vector2 position, bool mayMove)
-	{
-		if (position.DistanceTo(ship.Position) < 115) return;
-			AddChild(new Asteroid { Position = position, Texture = GD.Load<Texture2D>($"res://Sprites/meteor{random.RandiRange(1, 3)}.png"), IsMoving = mayMove && random.Randf() < .45f, MoveAxis = random.Randf() < .5f ? Vector2.Right : Vector2.Down, MoveDistance = random.RandfRange(18, 42), MoveSpeed = random.RandfRange(.7f, 1.5f) });
-	}
-	void Shoot()
-	{
-		var shot = new MiningShot { Position = ship.Position + ship.GlobalTransform.X * 25, Direction = ship.GlobalTransform.X.Normalized() };
-		shot.AsteroidMined += asteroid => { if (IsInstanceValid(asteroid)) { asteroid.QueueFree(); status.Text = $"Ore mined: {++mined}    WASD: thrust    Mouse: aim    Left click: mine"; } };
-		AddChild(shot);
-	}
-}
 
-public partial class Asteroid : AnimatableBody2D
-{
-	public Texture2D Texture = null!; public bool IsMoving; public Vector2 MoveAxis; public float MoveDistance, MoveSpeed;
-	Vector2 origin; float time;
-	public override void _Ready() { origin = Position; CollisionLayer = 2; AddChild(new Sprite2D { Texture = Texture }); AddChild(new CollisionShape2D { Shape = new CircleShape2D { Radius = Math.Max(Texture.GetWidth(), Texture.GetHeight()) * .38f } }); }
-	public override void _PhysicsProcess(double delta) { if (IsMoving) { time += (float)delta * MoveSpeed; Position = origin + MoveAxis * Mathf.Sin(time) * MoveDistance; } }
-}
+	public override void _Draw()
+	{
+		Vector2 center = _player?.GlobalPosition ?? Vector2.Zero;
+		const float drawRange = 1800.0f;
+		DrawRect(new Rect2(center - Vector2.One * drawRange, Vector2.One * drawRange * 2.0f), Colors.Black);
+		float firstX = Mathf.Floor(center.X / 64.0f) * 64.0f - drawRange;
+		float firstY = Mathf.Floor(center.Y / 64.0f) * 64.0f - drawRange;
+		Color gridColor = new("10223a");
+		for (float x = firstX; x <= center.X + drawRange; x += 64.0f)
+			DrawLine(new Vector2(x, center.Y - drawRange), new Vector2(x, center.Y + drawRange), gridColor);
+		for (float y = firstY; y <= center.Y + drawRange; y += 64.0f)
+			DrawLine(new Vector2(center.X - drawRange, y), new Vector2(center.X + drawRange, y), gridColor);
+	}
 
-public partial class MiningShot : Area2D
-{
-	public Vector2 Direction; public event Action<Asteroid> AsteroidMined; float life = 1.15f;
-	public override void _Ready() { CollisionMask = 2; AddChild(new CollisionShape2D { Shape = new CircleShape2D { Radius = 4 } }); BodyEntered += body => { if (body is Asteroid asteroid) { AsteroidMined?.Invoke(asteroid); QueueFree(); } }; QueueRedraw(); }
-	public override void _Draw() => DrawCircle(Vector2.Zero, 4, new Color("7fffd4"));
-	public override void _PhysicsProcess(double delta) { Position += Direction * 630 * (float)delta; if ((life -= (float)delta) <= 0 || !GetViewportRect().Grow(60).HasPoint(Position)) QueueFree(); }
+	private void GenerateChunksAround(Vector2I playerChunk)
+	{
+		int radius = Mathf.Max(0, GenerationRadius);
+		for (int y = -radius; y <= radius; y++)
+		{
+			for (int x = -radius; x <= radius; x++)
+				GenerateChunk(new Vector2I(playerChunk.X + x, playerChunk.Y + y));
+		}
+		_initialGenerationComplete = true;
+	}
+
+	private void GenerateChunk(Vector2I chunk)
+	{
+		if (PassiveEntityScene == null || ActiveEnemyScene == null)
+		{
+			GD.PrintErr("MapGen could not load the entity scenes.");
+			return;
+		}
+
+		RandomNumberGenerator random = new();
+		random.Seed = GetChunkSeed(chunk);
+		if (_generatedChunks.Add(chunk))
+		{
+			for (int i = 0; i < Mathf.Max(0, PassiveEntitiesPerChunk); i++)
+				SpawnEntity(PassiveEntityScene, _passiveEntities, $"Passive_{chunk.X}_{chunk.Y}_{i}", chunk, random, PlayerClearanceRadius);
+		}
+		if (_initialGenerationComplete && _trackerChunksGenerated.Add(chunk))
+		{
+			float trackerClearance = Mathf.Max(ActiveEnemySpawnClearanceRadius, GetViewportClearance());
+			for (int i = 0; i < Mathf.Max(0, ActiveEnemiesPerChunk); i++)
+				SpawnEntity(ActiveEnemyScene, _activeEntities, $"Active_{chunk.X}_{chunk.Y}_{i}", chunk, random, trackerClearance);
+		}
+	}
+
+	private float GetViewportClearance()
+	{
+		return GetViewportRect().Size.Length() * 0.5f + 128.0f;
+	}
+
+	private void SpawnEntity(PackedScene scene, Node2D container, string entityName, Vector2I chunk, RandomNumberGenerator random, float playerClearance)
+	{
+		Node2D entity = scene.Instantiate<Node2D>();
+		entity.Name = entityName;
+		container.AddChild(entity);
+		for (int attempt = 0; attempt < 30; attempt++)
+		{
+			Vector2 position = new(
+				chunk.X * ChunkSize + _randomChunkCoordinate(random),
+				chunk.Y * ChunkSize + _randomChunkCoordinate(random));
+			if (_player != null && position.DistanceTo(_player.GlobalPosition) < playerClearance)
+				position = _player.GlobalPosition + Vector2.FromAngle(random.RandfRange(0.0f, Mathf.Tau)) * playerClearance;
+			if (IsSpawnPositionFree(container, entity, position))
+			{
+				entity.GlobalPosition = position;
+				entity.Rotation = random.RandiRange(0, 3) * Mathf.Pi / 2.0f;
+				if (random.Randf() < 0.5f)
+					entity.Scale = new Vector2(-1.0f, 1.0f);
+				return;
+			}
+		}
+		entity.GlobalPosition = _player?.GlobalPosition + Vector2.Right * playerClearance ?? Vector2.Zero;
+		entity.Rotation = random.RandiRange(0, 3) * Mathf.Pi / 2.0f;
+		if (random.Randf() < 0.5f)
+			entity.Scale = new Vector2(-1.0f, 1.0f);
+	}
+
+	private static bool IsSpawnPositionFree(Node2D container, Node2D candidate, Vector2 position)
+	{
+		foreach (Node child in container.GetChildren())
+		{
+			if (child != candidate && child is Node2D other && other.GlobalPosition.DistanceTo(position) < 72.0f)
+				return false;
+		}
+		return true;
+	}
+
+	private float _randomChunkCoordinate(RandomNumberGenerator random)
+	{
+		return random.RandfRange(32.0f, ChunkSize - 32.0f);
+	}
+
+	private Vector2I GetChunk(Vector2 position)
+	{
+		float size = Mathf.Max(64.0f, ChunkSize);
+		return new Vector2I(Mathf.FloorToInt(position.X / size), Mathf.FloorToInt(position.Y / size));
+	}
+
+	private static ulong GetChunkSeed(Vector2I chunk)
+	{
+		ulong x = unchecked((ulong)(long)chunk.X);
+		ulong y = unchecked((ulong)(long)chunk.Y);
+		ulong seed = (x * 73856093UL) ^ (y * 19349663UL) ^ 0x9E3779B97F4A7C15UL;
+		return seed == 0 ? 1UL : seed;
+	}
 }
