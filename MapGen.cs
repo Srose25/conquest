@@ -34,7 +34,7 @@ public partial class MapGen : Node2D
 	void BuildShip()
 	{
 		ship = new CharacterBody2D { Name = "PlayerShip", Position = GetViewportRect().Size / 2, CollisionLayer = 1, CollisionMask = 2 };
-		ship.AddChild(new Sprite2D { Texture = GD.Load<Texture2D>("res://Protagonist_Ship.png"), Scale = Vector2.One * 1.5f });
+		ship.AddChild(new Sprite2D { Texture = GD.Load<Texture2D>("res://Sprites/Protagonist_Ship.png"), Scale = Vector2.One * 1.5f });
 		ship.AddChild(new CollisionShape2D { Shape = new CircleShape2D { Radius = ShipRadius } }); AddChild(ship);
 	}
 	void BuildAsteroidMaze()
@@ -46,7 +46,7 @@ public partial class MapGen : Node2D
 	void AddAsteroid(Vector2 position, bool mayMove)
 	{
 		if (position.DistanceTo(ship.Position) < 115) return;
-		AddChild(new Asteroid { Position = position, Texture = GD.Load<Texture2D>($"res://meteor{random.RandiRange(1, 3)}.png"), IsMoving = mayMove && random.Randf() < .45f, MoveAxis = random.Randf() < .5f ? Vector2.Right : Vector2.Down, MoveDistance = random.RandfRange(18, 42), MoveSpeed = random.RandfRange(.7f, 1.5f) });
+			AddChild(new Asteroid { Position = position, Texture = GD.Load<Texture2D>($"res://Sprites/meteor{random.RandiRange(1, 3)}.png"), IsMoving = mayMove && random.Randf() < .45f, MoveAxis = random.Randf() < .5f ? Vector2.Right : Vector2.Down, MoveDistance = random.RandfRange(18, 42), MoveSpeed = random.RandfRange(.7f, 1.5f) });
 	}
 	void Shoot()
 	{

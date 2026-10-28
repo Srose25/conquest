@@ -1,15 +1,18 @@
-[gd_scene format=3 uid="uid://c8vfwsrsb8j1m"]
+[gd_scene load_steps=6 format=3 uid="uid://c8vfwsrsb8j1m"]
 
 [ext_resource type="Script" uid="uid://dr4eaoqq7c766" path="res://scripts/PlayerController.cs" id="1_player"]
-[ext_resource type="Texture2D" uid="uid://bvyk61vqdio47" path="res://Protagonist_Ship.png" id="2_ship"]
+[ext_resource type="Texture2D" uid="uid://bvyk61vqdio47" path="res://Sprites/Protagonist_Ship.png" id="2_ship"]
+[ext_resource type="PackedScene" uid="uid://gwrfvr65pc8p" path="res://scenes/combat/Bullet.tscn" id="3_bullet"]
 [ext_resource type="Script" uid="uid://b204ywg7dkxxe" path="res://scripts/CameraFollowController.cs" id="4_camera"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 18.0
 
 [node name="Player" type="CharacterBody2D" unique_id=1311028246]
+collision_layer = 1
 collision_mask = 2
 script = ExtResource("1_player")
+bullet_scene = ExtResource("3_bullet")
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=1759036337]
 scale = Vector2(1.5, 1.5)
@@ -26,3 +29,4 @@ shape = SubResource("CircleShape2D_player")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1686394564]
 script = ExtResource("4_camera")
+follow_delay_seconds = 0.125
