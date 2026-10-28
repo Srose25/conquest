@@ -10,6 +10,7 @@ public partial class HealthBarController : Control
 
 	public override void _Ready()
 	{
+		ProcessMode = ProcessModeEnum.Always;
 		MouseFilter = MouseFilterEnum.Ignore;
 		QueueRedraw();
 	}

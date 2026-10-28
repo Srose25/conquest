@@ -95,7 +95,7 @@ public partial class ActiveEnemyController : CharacterBody2D, IDamageable
 		_health = Mathf.Max(0.0f, _health - amount);
 		EmitSignal(SignalName.Damaged, amount, _health);
 		if (_health <= 0.0f)
-			Destroy();
+			Destroy(true);
 	}
 
 	private void OnAttackTimerTimeout()
@@ -116,7 +116,7 @@ public partial class ActiveEnemyController : CharacterBody2D, IDamageable
 		if (_destroyed || playerNode is not PlayerController player)
 			return;
 		player.TakeDamage(AttackDamage);
-		Destroy();
+		Destroy(false);
 	}
 
 	private void PushAsteroidsFromCollisions()
@@ -128,7 +128,7 @@ public partial class ActiveEnemyController : CharacterBody2D, IDamageable
 		}
 	}
 
-	private void Destroy()
+	private void Destroy(bool canDropPellets)
 	{
 		if (_destroyed)
 			return;
@@ -139,7 +139,7 @@ public partial class ActiveEnemyController : CharacterBody2D, IDamageable
 		int pixelMinimum = Mathf.Max(0, BreakPixelCountMin);
 		int pixelMaximum = Mathf.Max(pixelMinimum, BreakPixelCountMax);
 		BreakEffectController.Spawn(this, GlobalPosition, _random.RandiRange(pixelMinimum, pixelMaximum));
-		if (_random.Randf() <= PelletDropChance)
+		if (canDropPellets && _random.Randf() <= PelletDropChance)
 		{
 			ResourceDropController.Spawn(this, GlobalPosition, yield);
 			EmitSignal(SignalName.ResourcesDropped, yield, GlobalPosition);

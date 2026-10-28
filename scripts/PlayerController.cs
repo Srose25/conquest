@@ -45,7 +45,14 @@ using Godot;
 		Health = Mathf.Max(0.0f, Health - amount);
 		EmitSignal(SignalName.Damaged, amount, Health);
 		if (Health <= 0.0f)
+		{
+			DeathExplosionController.Spawn(this, GlobalPosition, GlobalRotation);
+			Visible = false;
+			CollisionLayer = 0;
+			CollisionMask = 0;
+			SetPhysicsProcess(false);
 			GetTree().Paused = true;
+		}
 	}
 
 	public void AddResources(int amount)
