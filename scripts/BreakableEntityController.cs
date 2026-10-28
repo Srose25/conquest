@@ -10,8 +10,8 @@ public partial class BreakableEntityController : RigidBody2D, IDamageable
 
 	[Export] public float MaxHealth { get; set; } = 2.0f;
 	[Export] public int ResourceYieldMin { get; set; } = 1;
-	[Export] public int ResourceYieldMax { get; set; } = 2;
-	[Export(PropertyHint.Range, "0,1,0.05")] public float PelletDropChance { get; set; } = 0.35f;
+	[Export] public int ResourceYieldMax { get; set; } = 1;
+	[Export(PropertyHint.Range, "0,1,0.05")] public float PelletDropChance { get; set; } = 0.25f;
 	[Export] public int BreakPixelCountMin { get; set; } = 3;
 	[Export] public int BreakPixelCountMax { get; set; } = 5;
 	[Export] public float PushSlowdownDurationSeconds { get; set; } = 10.0f;
