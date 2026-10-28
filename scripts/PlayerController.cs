@@ -2,19 +2,26 @@
 using Godot;
 
 /// <summary>Handles player movement, cursor aiming, and firing reusable bullet scenes.</summary>
-public partial class PlayerController : CharacterBody2D
+	public partial class PlayerController : CharacterBody2D
 {
+	[Signal] public delegate void DamagedEventHandler(float amount, float remainingHealth);
 	[Export] public float MoveSpeed { get; set; } = 255.0f;
 	[Export] public float FireCooldownSeconds { get; set; } = 0.16f;
 	[Export] public float BulletSpeed { get; set; } = 630.0f;
 	[Export] public float MuzzleOffset { get; set; } = 26.0f;
 	[Export] public PackedScene? BulletScene { get; set; }
+	[Export] public float MaxHealth { get; set; } = 10.0f;
+
+	public float Health { get; private set; }
+	public int Resources { get; private set; }
 
 	private Timer _fireCooldown = null!;
 	private Marker2D _muzzle = null!;
 
 	public override void _Ready()
 	{
+		AddToGroup("player");
+		Health = Mathf.Max(1.0f, MaxHealth);
 		_fireCooldown = GetNode<Timer>("FireCooldown");
 		_muzzle = GetNode<Marker2D>("Cursor");
 		_fireCooldown.WaitTime = FireCooldownSeconds;
@@ -27,6 +34,22 @@ public partial class PlayerController : CharacterBody2D
 		BulletScene ??= GD.Load<PackedScene>("res://scenes/combat/Bullet.tscn");
 		if (BulletScene == null)
 			GD.PrintErr("PlayerController could not load Bullet.tscn.");
+	}
+
+	public void TakeDamage(float amount)
+	{
+		if (amount <= 0.0f || Health <= 0.0f)
+			return;
+		Health = Mathf.Max(0.0f, Health - amount);
+		EmitSignal(SignalName.Damaged, amount, Health);
+		if (Health <= 0.0f)
+			GetTree().Paused = true;
+	}
+
+	public void AddResources(int amount)
+	{
+		if (amount > 0)
+			Resources += amount;
 	}
 
 	public override void _PhysicsProcess(double delta)

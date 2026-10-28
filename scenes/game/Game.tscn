@@ -1,12 +1,13 @@
-[gd_scene format=3 uid="uid://bp6gsbr82vhiq"]
+[gd_scene load_steps=3 format=3 uid="uid://bp6gsbr82vhiq"]
 
 [ext_resource type="PackedScene" uid="uid://c8vfwsrsb8j1m" path="res://scenes/actors/Player.tscn" id="1_80nbo"]
+[ext_resource type="PackedScene" uid="uid://c6kt303fr3pb2" path="res://scenes/game/World.tscn" id="2_world"]
 
 [node name="Game" type="Node2D" unique_id=1763646068]
 
 [node name="GameState" type="Node" parent="." unique_id=200173671]
 
-[node name="World" type="Node2D" parent="." unique_id=1737077769]
+[node name="World" parent="." unique_id=1737077769 instance=ExtResource("2_world")]
 
 [node name="EntityRegistry" type="Node" parent="." unique_id=2145574615]
 

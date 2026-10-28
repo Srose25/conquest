@@ -1,6 +1,7 @@
-[gd_scene load_steps=5 format=3 uid="uid://c8vfwsrsb8j1m"]
+[gd_scene load_steps=6 format=3 uid="uid://c8vfwsrsb8j1m"]
 
 [ext_resource type="Script" path="res://scripts/PlayerController.cs" id="1_player"]
+[ext_resource type="Script" path="res://scripts/CameraFollowController.cs" id="4_camera"]
 [ext_resource type="Texture2D" path="res://Protagonist_Ship.png" id="2_ship"]
 [ext_resource type="PackedScene" uid="uid://gwrfvr65pc8p" path="res://scenes/combat/Bullet.tscn" id="3_bullet"]
 
@@ -25,3 +26,7 @@ shape = SubResource("CircleShape2D_player")
 [node name="FireCooldown" type="Timer" parent="." unique_id=852937108]
 
 [node name="AimPoint" type="Node2D" parent="." unique_id=67084337]
+
+[node name="Camera2D" type="Camera2D" parent="." unique_id=1686394564]
+script = ExtResource("4_camera")
+follow_delay_seconds = 0.125

@@ -47,6 +47,10 @@ public partial class BulletController : Area2D
 		if (_hasHit || body == _source || !IsInstanceValid(body))
 			return;
 		_hasHit = true;
+		if (body is IDamageable damageable)
+			damageable.TakeDamage(1.0f, this);
+		else if (body.GetParent() is IDamageable parentDamageable)
+			parentDamageable.TakeDamage(1.0f, this);
 		EmitSignal(SignalName.Hit, body);
 		QueueFree();
 	}

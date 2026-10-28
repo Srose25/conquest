@@ -1,9 +1,19 @@
-[gd_scene format=3 uid="uid://denvr0fnhiym0"]
+[gd_scene load_steps=4 format=3 uid="uid://denvr0fnhiym0"]
 
-[node name="PassiveEntity" type="Node2D" unique_id=1147627767]
+[ext_resource type="Script" path="res://scripts/BreakableEntityController.cs" id="1_passive"]
+[ext_resource type="Texture2D" path="res://meteor1.png" id="2_meteor"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_passive"]
+radius = 22.0
+
+[node name="PassiveEntity" type="StaticBody2D" unique_id=1147627767]
+script = ExtResource("1_passive")
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=1524487585]
+texture = ExtResource("2_meteor")
 
-[node name="StaticBody2D" type="StaticBody2D" parent="." unique_id=600579655]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1785301823]
+shape = SubResource("CircleShape2D_passive")
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D" unique_id=1785301823]
+[node name="VisibleOnScreenNotifier2D" type="VisibleOnScreenNotifier2D" parent="." unique_id=2090631474]
+rect = Rect2(-28, -28, 56, 56)

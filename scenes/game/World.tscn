@@ -1,4 +1,7 @@
-[gd_scene format=3 uid="uid://c6kt303fr3pb2"]
+[gd_scene load_steps=3 format=3 uid="uid://c6kt303fr3pb2"]
+
+[ext_resource type="PackedScene" uid="uid://denvr0fnhiym0" path="res://scenes/actors/PassiveEntity.tscn" id="1_passive"]
+[ext_resource type="PackedScene" uid="uid://7muvvjrjqnvp" path="res://scenes/actors/ActiveEnemy.tscn" id="2_active"]
 
 [node name="World" type="Node2D" unique_id=1122037106]
 
@@ -13,3 +16,15 @@
 [node name="ResourceDrops" type="Node2D" parent="." unique_id=669048075]
 
 [node name="WorldBounds" type="StaticBody2D" parent="." unique_id=760992968]
+
+[node name="PassiveEntity" parent="PassiveEntities" instance=ExtResource("1_passive")]
+position = Vector2(240, 180)
+
+[node name="PassiveEntity2" parent="PassiveEntities" instance=ExtResource("1_passive")]
+position = Vector2(620, 240)
+
+[node name="PassiveEntity3" parent="PassiveEntities" instance=ExtResource("1_passive")]
+position = Vector2(820, 460)
+
+[node name="ActiveEnemy" parent="ActiveEntities" instance=ExtResource("2_active")]
+position = Vector2(760, 180)

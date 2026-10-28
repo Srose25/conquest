@@ -1,11 +1,26 @@
-[gd_scene format=3 uid="uid://7muvvjrjqnvp"]
+[gd_scene load_steps=4 format=3 uid="uid://7muvvjrjqnvp"]
 
-[node name="ActiveEnemy" type="Node2D" unique_id=1439996129]
+[ext_resource type="Script" path="res://scripts/ActiveEnemyController.cs" id="1_enemy"]
+[ext_resource type="Texture2D" path="res://meteor2.png" id="2_meteor"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_enemy"]
+radius = 22.0
+
+[node name="ActiveEnemy" type="CharacterBody2D" unique_id=1439996129]
+script = ExtResource("1_enemy")
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=1242904315]
+texture = ExtResource("2_meteor")
 
-[node name="CharacterBody2D" type="CharacterBody2D" parent="." unique_id=1022797307]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1879816410]
+shape = SubResource("CircleShape2D_enemy")
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="CharacterBody2D" unique_id=1879816410]
+[node name="DetectionArea" type="Area2D" parent="." unique_id=1059851166]
+collision_layer = 0
+collision_mask = 1
 
-[node name="Area2D" type="Area2D" parent="CharacterBody2D" unique_id=1059851166]
+[node name="AttackTimer" type="Timer" parent="." unique_id=2079557310]
+wait_time = 1.0
+
+[node name="VisibleOnScreenNotifier2D" type="VisibleOnScreenNotifier2D" parent="." unique_id=2153318891]
+rect = Rect2(-28, -28, 56, 56)
