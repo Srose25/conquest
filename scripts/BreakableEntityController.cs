@@ -21,6 +21,7 @@ public partial class BreakableEntityController : RigidBody2D, IDamageable
 	private bool _wasPushed;
 	private float _secondsSincePush;
 	private float _pushSpeedAtStart;
+	private bool _simulationEnabled;
 	private readonly RandomNumberGenerator _random = new();
 
 	public override void _Ready()
@@ -36,6 +37,18 @@ public partial class BreakableEntityController : RigidBody2D, IDamageable
 		MaxContactsReported = 4;
 		_health = Mathf.Max(1.0f, MaxHealth);
 		_random.Randomize();
+		SetSimulationEnabled(true);
+	}
+
+	public void SetSimulationEnabled(bool enabled)
+	{
+		if (_simulationEnabled == enabled)
+			return;
+		_simulationEnabled = enabled;
+		Freeze = !enabled;
+		CollisionLayer = enabled ? (uint)(1 << 1) : 0u;
+		CollisionMask = enabled ? (uint)((1 << 1) | (1 << 2) | (1 << 3)) : 0u;
+		SetPhysicsProcess(enabled);
 	}
 
 	public override void _PhysicsProcess(double delta)

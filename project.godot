@@ -16,6 +16,8 @@ config/features=PackedStringArray("4.7", "C#", "Mobile")
 
 [display]
 
+window/size/viewport_width=1152
+window/size/viewport_height=648
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 

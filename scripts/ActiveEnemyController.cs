@@ -24,6 +24,7 @@ public partial class ActiveEnemyController : CharacterBody2D, IDamageable
 	private VisibleOnScreenNotifier2D _screenNotifier = null!;
 	private Area2D _detectionArea = null!;
 	private bool _hasBeenRevealed;
+	private bool _withinPhysicsWindow = true;
 	private bool _destroyed;
 	private readonly RandomNumberGenerator _random = new();
 
@@ -38,18 +39,68 @@ public partial class ActiveEnemyController : CharacterBody2D, IDamageable
 		_screenNotifier = GetNode<VisibleOnScreenNotifier2D>("VisibleOnScreenNotifier2D");
 		_detectionArea = GetNode<Area2D>("DetectionArea");
 		_detectionArea.BodyEntered += OnDetectionBodyEntered;
+		_screenNotifier.ScreenEntered += OnTrackerScreenEntered;
+		_screenNotifier.ScreenExited += OnTrackerScreenExited;
 		_attackTimer.WaitTime = 1.0f;
 		_attackTimer.OneShot = false;
 		_attackTimer.Timeout += OnAttackTimerTimeout;
 		_player = GetTree().GetFirstNodeInGroup("player") as Node2D;
+		AddToGroup("tracker");
 		Velocity = Vector2.Zero;
+		SetTrackerCollisionEnabled(IsActuallyOnScreen());
+	}
+
+	private void OnTrackerScreenEntered()
+	{
+		if (!_withinPhysicsWindow || !IsActuallyOnScreen())
+			return;
+		_hasBeenRevealed = true;
+		SetTrackerCollisionEnabled(true);
+		SetPhysicsProcess(true);
+	}
+
+	private void OnTrackerScreenExited()
+	{
+		Velocity = Vector2.Zero;
+		SetTrackerCollisionEnabled(false);
+	}
+
+	private void SetTrackerCollisionEnabled(bool enabled)
+	{
+		CollisionLayer = enabled ? (uint)(1 << 2) : 0u;
+		CollisionMask = enabled ? (uint)((1 << 1) | (1 << 2)) : 0u;
+	}
+
+	public void SetWithinPhysicsWindow(bool enabled)
+	{
+		if (_withinPhysicsWindow == enabled)
+			return;
+		_withinPhysicsWindow = enabled;
+		if (!enabled)
+		{
+			Velocity = Vector2.Zero;
+			SetTrackerCollisionEnabled(false);
+			SetPhysicsProcess(false);
+		}
+		else
+		{
+			SetPhysicsProcess(true);
+		}
+	}
+
+	private bool IsActuallyOnScreen()
+	{
+		Vector2 screenPosition = GetViewport().GetCanvasTransform() * GlobalPosition;
+		return new Rect2(Vector2.Zero, GetViewportRect().Size).Grow(2.0f).HasPoint(screenPosition);
 	}
 
 	public override void _PhysicsProcess(double delta)
 	{
+		if (!_withinPhysicsWindow)
+			return;
 		if (!_hasBeenRevealed)
 		{
-			if (_screenNotifier.IsOnScreen())
+			if (_screenNotifier.IsOnScreen() && IsActuallyOnScreen())
 				_hasBeenRevealed = true;
 			else
 			{
@@ -58,6 +109,13 @@ public partial class ActiveEnemyController : CharacterBody2D, IDamageable
 				return;
 			}
 		}
+		if (!_screenNotifier.IsOnScreen() || !IsActuallyOnScreen())
+		{
+			Velocity = Vector2.Zero;
+			_attackTimer.Stop();
+			return;
+		}
+		SetTrackerCollisionEnabled(true);
 
 		_player ??= GetTree().GetFirstNodeInGroup("player") as Node2D;
 		if (!IsInstanceValid(_player))

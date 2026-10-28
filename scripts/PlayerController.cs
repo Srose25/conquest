@@ -156,19 +156,13 @@ using Godot;
 		//}
 
 		Area2D bullet = BulletScene.Instantiate<Area2D>();
-		//GD.Print($"Bullet instantiated: {bullet.GetType().Name}");
-
-		//Debugging line
-		//GD.Print($"Bullet instantiated: {bullet}");
-
-		Node parent = GetParent();
-		parent.AddChild(bullet);
-		bullet.GlobalPosition = _muzzle.GlobalPosition;
 		if (bullet is BulletController controller)
 		{
-			//GD.Print($"Bullet initialized at {bullet.GlobalPosition}, direction: {direction}");
 			controller.Initialize(direction, BulletSpeed, this);
 		}
+		bullet.GlobalPosition = _muzzle.GlobalPosition;
+		Node parent = GetTree().CurrentScene ?? GetParent();
+		parent.AddChild(bullet);
 		_fireCooldown.Start();
 	}
 }

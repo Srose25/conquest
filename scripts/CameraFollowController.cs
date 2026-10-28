@@ -10,6 +10,7 @@ public partial class CameraFollowController : Camera2D
 
 	public override void _Ready()
 	{
+		ProcessPriority = -100;
 		_target = GetParent<Node2D>();
 		TopLevel = true;
 		Enabled = true;

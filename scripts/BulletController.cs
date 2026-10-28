@@ -47,6 +47,7 @@ public partial class BulletController : Area2D
 		if (_hasHit || body == _source || !IsInstanceValid(body))
 			return;
 		_hasHit = true;
+		BulletImpactController.Spawn(this, GlobalPosition);
 		if (body is IDamageable damageable)
 			damageable.TakeDamage(1.0f, this);
 		else if (body.GetParent() is IDamageable parentDamageable)

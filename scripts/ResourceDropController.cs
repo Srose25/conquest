@@ -30,9 +30,13 @@ public partial class ResourceDropController : Area2D
 		{
 			ResourceDropController drop = scene.Instantiate<ResourceDropController>();
 			drop.Amount = 1;
-			parent.AddChild(drop);
 			float angle = i * Mathf.Tau / Mathf.Max(1, amount);
-			drop.GlobalPosition = position + Vector2.FromAngle(angle) * 12.0f;
+			Vector2 dropPosition = position + Vector2.FromAngle(angle) * 12.0f;
+			if (parent is Node2D parent2D)
+				drop.Position = parent2D.ToLocal(dropPosition);
+			else
+				drop.GlobalPosition = dropPosition;
+			parent.AddChild(drop);
 		}
 	}
 

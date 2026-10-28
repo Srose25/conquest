@@ -6,11 +6,15 @@
 
 [node name="World" type="Node2D" unique_id=1122037106]
 script = ExtResource("3_map_gen")
-chunk_size = 480.0
+chunk_size = Vector2(1152, 648)
 generation_radius = 2
 passive_entities_per_chunk = 5
-active_enemies_per_chunk = 1
-active_enemy_spawn_clearance_radius = 700.0
+active_enemies_min_per_chunk = 1
+active_enemies_max_per_chunk = 5
+player_clearance_radius = 240.0
+active_enemy_spawn_clearance_radius = 240.0
+safe_chunk_chance = 0.2
+passive_density_multiplier = 1.25
 passive_entity_scene = ExtResource("1_passive")
 active_enemy_scene = ExtResource("2_active")
 
