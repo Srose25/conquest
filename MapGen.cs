@@ -99,9 +99,9 @@ public partial class MapGen : Node2D
 		float firstY = Mathf.Floor(center.Y / 64.0f) * 64.0f - drawRange;
 		Color gridColor = new("10223a");
 		for (float x = firstX; x <= center.X + drawRange; x += 64.0f)
-			DrawLine(new Vector2(x, center.Y - drawRange), new Vector2(x, center.Y + drawRange), gridColor);
+			DrawLine(new Vector2(x, center.Y - drawRange), new Vector2(x, center.Y + drawRange), gridColor, 1.5f, true);
 		for (float y = firstY; y <= center.Y + drawRange; y += 64.0f)
-			DrawLine(new Vector2(center.X - drawRange, y), new Vector2(center.X + drawRange, y), gridColor);
+			DrawLine(new Vector2(center.X - drawRange, y), new Vector2(center.X + drawRange, y), gridColor, 1.5f, true);
 	}
 
 	private void QueueInitialChunkWindow(Vector2I playerChunk)
