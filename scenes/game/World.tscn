@@ -29,7 +29,7 @@ show_behind_parent = true
 
 [node name="FarStars" type="Parallax2D" parent="Background"]
 repeat_size = Vector2(1024, 1024)
-repeat_times = 3
+repeat_times = 5
 scroll_scale = Vector2(0.16, 0.16)
 
 [node name="Texture" type="Sprite2D" parent="Background/FarStars"]
@@ -39,7 +39,7 @@ texture_repeat = 2
 
 [node name="MidStars" type="Parallax2D" parent="Background"]
 repeat_size = Vector2(512, 512)
-repeat_times = 3
+repeat_times = 5
 scroll_scale = Vector2(0.38, 0.38)
 
 [node name="Texture" type="Sprite2D" parent="Background/MidStars"]
@@ -51,7 +51,7 @@ texture_repeat = 2
 
 [node name="NearStars" type="Parallax2D" parent="Background"]
 repeat_size = Vector2(1024, 1024)
-repeat_times = 3
+repeat_times = 5
 scroll_scale = Vector2(0.62, 0.62)
 
 [node name="Texture" type="Sprite2D" parent="Background/NearStars"]
