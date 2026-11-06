@@ -16,6 +16,7 @@ using Godot;
 
 	public float Health { get; private set; }
 	public int Resources { get; private set; }
+	public bool IsDead => Health <= 0.0f;
 
 	private Timer _fireCooldown = null!;
 	private Marker2D _muzzle = null!;
@@ -51,7 +52,6 @@ using Godot;
 			CollisionLayer = 0;
 			CollisionMask = 0;
 			SetPhysicsProcess(false);
-			GetTree().Paused = true;
 		}
 	}
 

@@ -123,6 +123,19 @@ public partial class ActiveEnemyController : CharacterBody2D, IDamageable
 			Velocity = Vector2.Zero;
 			return;
 		}
+		if (_player is PlayerController player && player.IsDead)
+		{
+			// Death does not freeze the encounter: revealed trackers keep their last
+			// heading until they naturally leave the view and are deactivated.
+			_attackTimer.Stop();
+			if (Velocity.LengthSquared() > Mathf.Epsilon)
+			{
+				MoveAndSlide();
+				DestroyTrackersCollidingAtPlayerPosition();
+				Rotation = Velocity.Angle();
+			}
+			return;
+		}
 
 		float distance = GlobalPosition.DistanceTo(_player.GlobalPosition);
 		if (distance > AttackRange)
@@ -173,6 +186,8 @@ public partial class ActiveEnemyController : CharacterBody2D, IDamageable
 	{
 		if (_destroyed || playerNode is not PlayerController player)
 			return;
+		if (player.IsDead)
+			return;
 		player.TakeDamage(AttackDamage);
 		Destroy(false);
 	}
@@ -181,9 +196,38 @@ public partial class ActiveEnemyController : CharacterBody2D, IDamageable
 	{
 		for (int i = 0; i < GetSlideCollisionCount(); i++)
 		{
-			if (GetSlideCollision(i).GetCollider() is BreakableEntityController asteroid)
+			KinematicCollision2D collision = GetSlideCollision(i);
+			Node? collider = collision.GetCollider() as Node;
+			if (collider is BreakableEntityController asteroid)
 				asteroid.ApplyPush(GlobalPosition.DirectionTo(asteroid.GlobalPosition), MoveSpeed * 1.5f);
+			else if (collider is ActiveEnemyController tracker && tracker != this && !tracker._destroyed && IsAtPlayerPosition(collision.GetPosition()))
+			{
+				// Only a collision at the ship's position destroys trackers.
+				tracker.Destroy(false);
+				Destroy(false);
+				return;
+			}
 		}
+	}
+
+	private void DestroyTrackersCollidingAtPlayerPosition()
+	{
+		for (int i = 0; i < GetSlideCollisionCount(); i++)
+		{
+			KinematicCollision2D collision = GetSlideCollision(i);
+			if (collision.GetCollider() is ActiveEnemyController tracker && tracker != this && !tracker._destroyed && IsAtPlayerPosition(collision.GetPosition()))
+			{
+				tracker.Destroy(false);
+				Destroy(false);
+				return;
+			}
+		}
+	}
+
+	private bool IsAtPlayerPosition(Vector2 position)
+	{
+		// The hidden player remains at the death location, making this valid after death too.
+		return IsInstanceValid(_player) && position.DistanceSquaredTo(_player!.GlobalPosition) <= 24.0f * 24.0f;
 	}
 
 	private void Destroy(bool canDropPellets)
