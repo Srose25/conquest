@@ -96,7 +96,7 @@ public partial class MapGen : Node2D
 		const float drawRange = 1800.0f;
 		float firstX = Mathf.Floor(center.X / 64.0f) * 64.0f - drawRange;
 		float firstY = Mathf.Floor(center.Y / 64.0f) * 64.0f - drawRange;
-		Color gridColor = new(16.0f / 255.0f, 34.0f / 255.0f, 58.0f / 255.0f, 0.70f);
+		Color gridColor = new(56.0f / 255.0f, 217.0f / 255.0f, 255.0f / 255.0f, 0.25f);
 		for (float x = firstX; x <= center.X + drawRange; x += 64.0f)
 			DrawLine(new Vector2(x, center.Y - drawRange), new Vector2(x, center.Y + drawRange), gridColor, 1.5f, true);
 		for (float y = firstY; y <= center.Y + drawRange; y += 64.0f)
