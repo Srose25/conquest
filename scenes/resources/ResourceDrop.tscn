@@ -1,12 +1,18 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/ResourceDropController.cs" id="1_drop"]
+[ext_resource type="Texture2D" uid="uid://b34yo7qcheg2k" path="res://Sprites/Repair Pellet.png" id="2_pellet"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_drop"]
 radius = 9.0
 
 [node name="ResourceDrop" type="Area2D"]
 script = ExtResource("1_drop")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture_filter = 1
+scale = Vector2(2, 2)
+texture = ExtResource("2_pellet")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_drop")

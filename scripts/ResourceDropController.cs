@@ -12,7 +12,6 @@ public partial class ResourceDropController : Area2D
 		CollisionLayer = 0;
 		CollisionMask = 1;
 		BodyEntered += OnBodyEntered;
-		QueueRedraw();
 	}
 
 	public static void Spawn(Node source, Vector2 position, int amount)
@@ -38,12 +37,6 @@ public partial class ResourceDropController : Area2D
 				drop.GlobalPosition = dropPosition;
 			parent.AddChild(drop);
 		}
-	}
-
-	public override void _Draw()
-	{
-		DrawCircle(Vector2.Zero, 8.0f, new Color("fff1a8"));
-		DrawCircle(Vector2.Zero, 4.0f, new Color("f5c542"));
 	}
 
 	private void OnBodyEntered(Node body)
