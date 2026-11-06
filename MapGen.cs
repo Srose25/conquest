@@ -94,10 +94,9 @@ public partial class MapGen : Node2D
 		Camera2D? camera = GetViewport().GetCamera2D();
 		Vector2 center = camera?.GlobalPosition ?? _player?.GlobalPosition ?? Vector2.Zero;
 		const float drawRange = 1800.0f;
-		DrawRect(new Rect2(center - Vector2.One * drawRange, Vector2.One * drawRange * 2.0f), Colors.Black);
 		float firstX = Mathf.Floor(center.X / 64.0f) * 64.0f - drawRange;
 		float firstY = Mathf.Floor(center.Y / 64.0f) * 64.0f - drawRange;
-		Color gridColor = new("10223a");
+		Color gridColor = new(16.0f / 255.0f, 34.0f / 255.0f, 58.0f / 255.0f, 0.70f);
 		for (float x = firstX; x <= center.X + drawRange; x += 64.0f)
 			DrawLine(new Vector2(x, center.Y - drawRange), new Vector2(x, center.Y + drawRange), gridColor, 1.5f, true);
 		for (float y = firstY; y <= center.Y + drawRange; y += 64.0f)
