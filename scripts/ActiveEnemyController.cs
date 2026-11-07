@@ -16,6 +16,7 @@ public partial class ActiveEnemyController : CharacterBody2D, IDamageable
 	[Export] public int BreakPixelCountMin { get; set; } = 7;
 	[Export] public int BreakPixelCountMax { get; set; } = 9;
 	[Export] public float MoveSpeed { get; set; } = 85.0f;
+	[Export] public float TrackingActivationRange { get; set; } = 250.0f;
 	[Export] public float AttackRange { get; set; } = 48.0f;
 	[Export] public float AttackDamage { get; set; } = 2.0f;
 
@@ -25,6 +26,7 @@ public partial class ActiveEnemyController : CharacterBody2D, IDamageable
 	private VisibleOnScreenNotifier2D _screenNotifier = null!;
 	private Area2D _detectionArea = null!;
 	private bool _hasBeenRevealed;
+	private bool _hasActivatedTracking;
 	private bool _withinPhysicsWindow = true;
 	private bool _destroyed;
 	private readonly RandomNumberGenerator _random = new();
@@ -144,6 +146,19 @@ public partial class ActiveEnemyController : CharacterBody2D, IDamageable
 			Velocity = Vector2.Zero;
 			return;
 		}
+		// Being revealed only makes a tracker eligible. It remains inert until the
+		// player actually comes within its 250-unit magnetism range; after that its
+		// normal pursuit behavior continues for the life of the encounter.
+		if (!_hasActivatedTracking)
+		{
+			if (GlobalPosition.DistanceTo(_player!.GlobalPosition) > TrackingActivationRange)
+			{
+				Velocity = Vector2.Zero;
+				_attackTimer.Stop();
+				return;
+			}
+			_hasActivatedTracking = true;
+		}
 		if (_player is PlayerController player && player.IsDead)
 		{
 			// Death does not freeze the encounter: revealed trackers keep their last
@@ -209,7 +224,7 @@ public partial class ActiveEnemyController : CharacterBody2D, IDamageable
 
 	private void OnDetectionBodyEntered(Node body)
 	{
-		if (_hasBeenRevealed && body is PlayerController player)
+		if (_hasBeenRevealed && _hasActivatedTracking && body is PlayerController player)
 			AttackPlayer(player);
 	}
 

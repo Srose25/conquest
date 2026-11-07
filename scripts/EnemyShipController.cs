@@ -87,6 +87,11 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 	private int _healthBarDamageStartSegment;
 	private int _healthBarDamageSegmentCount;
 	private float _healthBarDamageAnimationElapsed = -1.0f;
+	// Only a small wing may press the attack at once. Other alerted ships keep
+	// their lock but orbit as reserves, avoiding an unavoidable firing wall.
+	private static int _nextEngagementPriority;
+	private int _engagementPriority;
+	private const int MaxConcurrentAttackers = 2;
 
 	public bool HasTargetLock => _hasTargetLock;
 
@@ -103,6 +108,7 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 		_health = Mathf.Max(1.0f, MaxHealth);
 		_shield = Mathf.Max(0.0f, MaxShield);
 		_random.Randomize();
+		AddToGroup("enemy_ship");
 		_player = GetTree().GetFirstNodeInGroup("player") as Node2D;
 		_screenNotifier = GetNode<VisibleOnScreenNotifier2D>("VisibleOnScreenNotifier2D");
 		Sprite2D sprite = GetNode<Sprite2D>("Sprite2D");
@@ -359,6 +365,16 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 			PatrolAsteroids(step);
 			return;
 		}
+		if (!HasEngagementSlot())
+		{
+			// Keep a reserve present and readable, but never let it add another
+			// burst to the player. A wounded front-line ship yields its place to a
+			// healthier wingmate, so reserves still have a reason to step in.
+			_burstShotsRemaining = 0;
+			_volleyCooldownSeconds = 1.0f;
+			OrbitAsReserve(player.GlobalPosition, step);
+			return;
+		}
 		if (ProcessAmbushResponse(player.GlobalPosition, step))
 			return;
 
@@ -511,6 +527,57 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 
 		float maneuverSpeed = _isCharging ? MoveSpeed * 1.15f : MoveSpeed;
 		MoveWithCollision(desiredDirection, maneuverSpeed, delta);
+	}
+
+	private bool HasEngagementSlot()
+	{
+		List<EnemyShipController> engagedShips = new();
+		foreach (Node node in GetTree().GetNodesInGroup("enemy_ship"))
+		{
+			if (node is EnemyShipController ship
+				&& IsInstanceValid(ship)
+				&& !ship._destroyed
+				&& ship._withinPhysicsWindow
+				&& ship._hasTargetLock)
+			{
+				engagedShips.Add(ship);
+			}
+		}
+
+		engagedShips.Sort((left, right) => left.GetEngagementScore().CompareTo(right.GetEngagementScore()));
+		int slotCount = Mathf.Min(MaxConcurrentAttackers, engagedShips.Count);
+		for (int index = 0; index < slotCount; index++)
+		{
+			if (engagedShips[index] == this)
+				return true;
+		}
+		return false;
+	}
+
+	private int GetEngagementScore()
+	{
+		// A damaged front-line ship falls back into the wing. This lets an orbiting
+		// reserve rotate into the two-ship firing line without ever exceeding it.
+		bool needsRelief = _health <= MaxHealth * 0.50f;
+		return _engagementPriority + (needsRelief ? 1_000_000 : 0);
+	}
+
+	private void OrbitAsReserve(Vector2 playerPosition, float delta)
+	{
+		Vector2 toPlayer = GlobalPosition.DirectionTo(playerPosition);
+		if (toPlayer.LengthSquared() <= Mathf.Epsilon)
+			toPlayer = -GlobalTransform.Y;
+		float distance = GlobalPosition.DistanceTo(playerPosition);
+		Vector2 tangent = new Vector2(-toPlayer.Y, toPlayer.X) * _orbitDirection;
+		const float reserveRange = 440.0f;
+		Vector2 desiredDirection = distance > reserveRange + 55.0f
+			? (toPlayer + tangent * 0.36f).Normalized()
+			: distance < reserveRange - 55.0f
+				? (-toPlayer + tangent * 0.60f).Normalized()
+				: tangent;
+		float targetRotation = desiredDirection.Angle() + Mathf.Pi / 2.0f;
+		Rotation = Mathf.RotateToward(Rotation, targetRotation, Mathf.DegToRad(TurnSpeedDegrees) * delta);
+		MoveWithCollision(desiredDirection, MoveSpeed * 0.62f, delta);
 	}
 
 	private void HandlePlayerDeath(Vector2 deathPosition, float delta)
@@ -993,6 +1060,7 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 			return;
 
 		_hasTargetLock = true;
+		_engagementPriority = ++_nextEngagementPriority;
 		_burstShotsRemaining = 0;
 		_volleyCooldownSeconds = 1.0f;
 		_ambushStrafe = _random.Randf() < 0.5f;
