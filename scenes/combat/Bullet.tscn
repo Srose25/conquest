@@ -2,8 +2,8 @@
 
 [ext_resource type="Script" uid="uid://ssjmxa8de2wg" path="res://scripts/BulletController.cs" id="1_bullet"]
 
-[sub_resource type="CircleShape2D" id="CircleShape2D_bullet"]
-radius = 4.0
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_bullet"]
+size = Vector2(14, 4)
 
 [node name="Bullet" type="Area2D" unique_id=1248653444]
 collision_layer = 8
@@ -13,6 +13,6 @@ script = ExtResource("1_bullet")
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=88582347]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=869098100]
-shape = SubResource("CircleShape2D_bullet")
+shape = SubResource("RectangleShape2D_bullet")
 
 [node name="VisibleOnScreenNotifier2D" type="VisibleOnScreenNotifier2D" parent="." unique_id=608587820]

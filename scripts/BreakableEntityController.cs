@@ -8,10 +8,11 @@ public partial class BreakableEntityController : RigidBody2D, IDamageable
 	[Signal] public delegate void ResourcesDroppedEventHandler(int amount, Vector2 position);
 	[Signal] public delegate void DestroyedEventHandler(Vector2 position);
 
-	[Export] public float MaxHealth { get; set; } = 2.0f;
+	[Export] public int MinHitsToDestroy { get; set; } = 2;
+	[Export] public int MaxHitsToDestroy { get; set; } = 3;
 	[Export] public int ResourceYieldMin { get; set; } = 1;
 	[Export] public int ResourceYieldMax { get; set; } = 1;
-	[Export(PropertyHint.Range, "0,1,0.05")] public float PelletDropChance { get; set; } = 0.25f;
+	[Export(PropertyHint.Range, "0,1,0.05")] public float PelletDropChance { get; set; } = 0.15f;
 	[Export] public int BreakPixelCountMin { get; set; } = 3;
 	[Export] public int BreakPixelCountMax { get; set; } = 5;
 	[Export] public float PushSlowdownDurationSeconds { get; set; } = 10.0f;
@@ -23,6 +24,9 @@ public partial class BreakableEntityController : RigidBody2D, IDamageable
 	private float _pushSpeedAtStart;
 	private bool _simulationEnabled;
 	private readonly RandomNumberGenerator _random = new();
+	private ShaderMaterial? _hitFlashMaterial;
+	private float _hitFlashSeconds;
+	private const float HitFlashDuration = 0.12f;
 
 	public override void _Ready()
 	{
@@ -35,9 +39,26 @@ public partial class BreakableEntityController : RigidBody2D, IDamageable
 		LinearDamp = 0.0f;
 		ContactMonitor = true;
 		MaxContactsReported = 4;
-		_health = Mathf.Max(1.0f, MaxHealth);
 		_random.Randomize();
+		int minimumHits = Mathf.Max(1, MinHitsToDestroy);
+		int maximumHits = Mathf.Max(minimumHits, MaxHitsToDestroy);
+		_health = _random.RandiRange(minimumHits, maximumHits);
+		Sprite2D sprite = GetNode<Sprite2D>("Sprite2D");
+		if (sprite.Material is ShaderMaterial material)
+		{
+			_hitFlashMaterial = (ShaderMaterial)material.Duplicate();
+			sprite.Material = _hitFlashMaterial;
+			_hitFlashMaterial.SetShaderParameter("flash_amount", 0.0f);
+		}
 		SetSimulationEnabled(true);
+	}
+
+	public override void _Process(double delta)
+	{
+		if (_hitFlashSeconds <= 0.0f || _hitFlashMaterial == null)
+			return;
+		_hitFlashSeconds = Mathf.Max(0.0f, _hitFlashSeconds - (float)delta);
+		_hitFlashMaterial.SetShaderParameter("flash_amount", _hitFlashSeconds / HitFlashDuration);
 	}
 
 	public void SetSimulationEnabled(bool enabled)
@@ -95,9 +116,19 @@ public partial class BreakableEntityController : RigidBody2D, IDamageable
 			return;
 
 		_health = Mathf.Max(0.0f, _health - amount);
+		FlashHit();
 		EmitSignal(SignalName.Damaged, amount, _health);
 		if (_health <= 0.0f)
 			Destroy();
+	}
+
+	private void FlashHit()
+	{
+		if (_hitFlashMaterial == null)
+			return;
+		_hitFlashSeconds = HitFlashDuration;
+		_hitFlashMaterial.SetShaderParameter("flash_color", Colors.White);
+		_hitFlashMaterial.SetShaderParameter("flash_amount", 1.0f);
 	}
 
 	private void Destroy()

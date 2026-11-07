@@ -1,0 +1,17 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/EnemyBoltController.cs" id="1_enemy_bolt"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_enemy_bolt"]
+size = Vector2(14, 4)
+
+[node name="EnemyBolt" type="Area2D"]
+collision_layer = 16
+collision_mask = 1
+script = ExtResource("1_enemy_bolt")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_enemy_bolt")
+
+[node name="VisibleOnScreenNotifier2D" type="VisibleOnScreenNotifier2D" parent="."]
+rect = Rect2(-10, -6, 20, 12)

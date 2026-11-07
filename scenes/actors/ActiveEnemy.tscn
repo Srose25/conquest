@@ -1,13 +1,18 @@
-[gd_scene load_steps=4 format=3 uid="uid://7muvvjrjqnvp"]
+[gd_scene load_steps=6 format=3 uid="uid://7muvvjrjqnvp"]
 
 [ext_resource type="Script" path="res://scripts/ActiveEnemyController.cs" id="1_enemy"]
 [ext_resource type="Texture2D" path="res://Sprites/meteor2.png" id="2_meteor"]
+[ext_resource type="Shader" path="res://shaders/HitFlash.gdshader" id="3_hit_flash"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_enemy"]
 radius = 22.0
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_detection"]
 radius = 24.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_active_hit_flash"]
+resource_local_to_scene = true
+shader = ExtResource("3_hit_flash")
 
 [node name="ActiveEnemy" type="CharacterBody2D" unique_id=1439996129]
 collision_mask = 6
@@ -16,6 +21,7 @@ resource_yield_min = 1
 resource_yield_max = 2
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=1242904315]
+material = SubResource("ShaderMaterial_active_hit_flash")
 texture = ExtResource("2_meteor")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1879816410]

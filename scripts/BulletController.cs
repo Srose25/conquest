@@ -12,11 +12,13 @@ public partial class BulletController : Area2D
 	private float _remainingLifetime;
 	private Node? _source;
 	private bool _hasHit;
+	public Vector2 Direction => _direction;
 
 	public override void _Ready()
 	{
 		CollisionLayer = 1 << 3;
 		CollisionMask = (1 << 1) | (1 << 2);
+		AddToGroup("player_bullet");
 		_remainingLifetime = LifetimeSeconds;
 		BodyEntered += OnBodyEntered;
 		GetNode<VisibleOnScreenNotifier2D>("VisibleOnScreenNotifier2D").ScreenExited += OnScreenExited;
@@ -28,6 +30,7 @@ public partial class BulletController : Area2D
 		_direction = direction.LengthSquared() > Mathf.Epsilon ? direction.Normalized() : Vector2.Right;
 		_speed = Mathf.Max(0.0f, speed);
 		_source = source;
+		Rotation = _direction.Angle();
 	}
 
 	public override void _PhysicsProcess(double delta)
@@ -40,7 +43,11 @@ public partial class BulletController : Area2D
 			QueueFree();
 	}
 
-	public override void _Draw() => DrawCircle(Vector2.Zero, 4.0f, new Color("00ffff"));
+	public override void _Draw()
+	{
+		DrawRect(new Rect2(-7.0f, -2.0f, 14.0f, 4.0f), new Color("006f88"));
+		DrawRect(new Rect2(-6.0f, -1.0f, 12.0f, 2.0f), new Color("48ffff"));
+	}
 
 	private void OnBodyEntered(Node body)
 	{
