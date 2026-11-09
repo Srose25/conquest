@@ -1,10 +1,9 @@
-[gd_scene load_steps=9 format=3 uid="uid://c8vfwsrsb8j1m"]
+[gd_scene format=3 uid="uid://c8vfwsrsb8j1m"]
 
 [ext_resource type="Script" uid="uid://dr4eaoqq7c766" path="res://scripts/PlayerController.cs" id="1_player"]
 [ext_resource type="Texture2D" uid="uid://bvyk61vqdio47" path="res://Sprites/Protagonist_Ship.png" id="2_ship"]
-[ext_resource type="PackedScene" uid="uid://gwrfvr65pc8p" path="res://scenes/combat/Bullet.tscn" id="3_bullet"]
 [ext_resource type="Script" uid="uid://b204ywg7dkxxe" path="res://scripts/CameraFollowController.cs" id="4_camera"]
-[ext_resource type="Texture2D" path="res://Sprites/crosshair1.png" id="5_crosshair"]
+[ext_resource type="Texture2D" uid="uid://bgokp2p2dk1od" path="res://Sprites/crosshair1.png" id="5_crosshair"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 18.0
@@ -16,11 +15,8 @@ radius = 180.0
 radius = 65.0
 
 [node name="Player" type="CharacterBody2D" unique_id=1311028246]
-collision_layer = 1
 collision_mask = 2
 script = ExtResource("1_player")
-bullet_scene = ExtResource("3_bullet")
-max_health = 20.0
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=1759036337]
 scale = Vector2(1.5, 1.5)
@@ -35,27 +31,24 @@ shape = SubResource("CircleShape2D_player")
 
 [node name="AimPoint" type="Node2D" parent="." unique_id=67084337]
 
-[node name="LowMagnetField" type="Area2D" parent="."]
+[node name="LowMagnetField" type="Area2D" parent="." unique_id=812337392]
 collision_layer = 0
 collision_mask = 4
-monitoring = true
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="LowMagnetField"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LowMagnetField" unique_id=927848137]
 shape = SubResource("CircleShape2D_low_magnet")
 
-[node name="HighMagnetField" type="Area2D" parent="."]
+[node name="HighMagnetField" type="Area2D" parent="." unique_id=2117432234]
 collision_layer = 0
 collision_mask = 4
-monitoring = true
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="HighMagnetField"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="HighMagnetField" unique_id=1823522847]
 shape = SubResource("CircleShape2D_high_magnet")
 
-[node name="Crosshair" type="Sprite2D" parent="."]
-texture = ExtResource("5_crosshair")
+[node name="Crosshair" type="Sprite2D" parent="." unique_id=2068695034]
 top_level = true
 z_index = 100
+texture = ExtResource("5_crosshair")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1686394564]
 script = ExtResource("4_camera")
-follow_delay_seconds = 0.125
