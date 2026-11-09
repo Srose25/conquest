@@ -8,13 +8,15 @@ public partial class ActiveEnemyController : CharacterBody2D, IDamageable
 	[Signal] public delegate void ResourcesDroppedEventHandler(int amount, Vector2 position);
 	[Signal] public delegate void DestroyedEventHandler(Vector2 position);
 
-	[Export] public float MaxHealth { get; set; } = 4.0f;
+	[Export] public int MinHitsToDestroy { get; set; } = 4;
+	[Export] public int MaxHitsToDestroy { get; set; } = 5;
 	[Export] public int ResourceYieldMin { get; set; } = 1;
 	[Export] public int ResourceYieldMax { get; set; } = 2;
-	[Export(PropertyHint.Range, "0,1,0.05")] public float PelletDropChance { get; set; } = 0.35f;
+	[Export(PropertyHint.Range, "0,1,0.05")] public float PelletDropChance { get; set; } = 0.20f;
 	[Export] public int BreakPixelCountMin { get; set; } = 7;
 	[Export] public int BreakPixelCountMax { get; set; } = 9;
 	[Export] public float MoveSpeed { get; set; } = 85.0f;
+	[Export] public float TrackingActivationRange { get; set; } = 250.0f;
 	[Export] public float AttackRange { get; set; } = 48.0f;
 	[Export] public float AttackDamage { get; set; } = 2.0f;
 
@@ -24,17 +26,30 @@ public partial class ActiveEnemyController : CharacterBody2D, IDamageable
 	private VisibleOnScreenNotifier2D _screenNotifier = null!;
 	private Area2D _detectionArea = null!;
 	private bool _hasBeenRevealed;
+	private bool _hasActivatedTracking;
 	private bool _withinPhysicsWindow = true;
 	private bool _destroyed;
 	private readonly RandomNumberGenerator _random = new();
+	private ShaderMaterial? _hitFlashMaterial;
+	private float _hitFlashSeconds;
+	private const float HitFlashDuration = 0.12f;
 
 	public override void _Ready()
 	{
 		CollisionLayer = 1 << 2;
 		// Trackers damage the ship through range checks, but collide with smaller asteroids and trackers.
 		CollisionMask = (1 << 1) | (1 << 2);
-		_health = Mathf.Max(1.0f, MaxHealth);
 		_random.Randomize();
+		int minimumHits = Mathf.Max(1, MinHitsToDestroy);
+		int maximumHits = Mathf.Max(minimumHits, MaxHitsToDestroy);
+		_health = _random.RandiRange(minimumHits, maximumHits);
+		Sprite2D sprite = GetNode<Sprite2D>("Sprite2D");
+		if (sprite.Material is ShaderMaterial material)
+		{
+			_hitFlashMaterial = (ShaderMaterial)material.Duplicate();
+			sprite.Material = _hitFlashMaterial;
+			_hitFlashMaterial.SetShaderParameter("flash_amount", 0.0f);
+		}
 		_attackTimer = GetNode<Timer>("AttackTimer");
 		_screenNotifier = GetNode<VisibleOnScreenNotifier2D>("VisibleOnScreenNotifier2D");
 		_detectionArea = GetNode<Area2D>("DetectionArea");
@@ -48,6 +63,14 @@ public partial class ActiveEnemyController : CharacterBody2D, IDamageable
 		AddToGroup("tracker");
 		Velocity = Vector2.Zero;
 		SetTrackerCollisionEnabled(IsActuallyOnScreen());
+	}
+
+	public override void _Process(double delta)
+	{
+		if (_hitFlashSeconds <= 0.0f || _hitFlashMaterial == null)
+			return;
+		_hitFlashSeconds = Mathf.Max(0.0f, _hitFlashSeconds - (float)delta);
+		_hitFlashMaterial.SetShaderParameter("flash_amount", _hitFlashSeconds / HitFlashDuration);
 	}
 
 	private void OnTrackerScreenEntered()
@@ -123,6 +146,19 @@ public partial class ActiveEnemyController : CharacterBody2D, IDamageable
 			Velocity = Vector2.Zero;
 			return;
 		}
+		// Being revealed only makes a tracker eligible. It remains inert until the
+		// player actually comes within its 250-unit magnetism range; after that its
+		// normal pursuit behavior continues for the life of the encounter.
+		if (!_hasActivatedTracking)
+		{
+			if (GlobalPosition.DistanceTo(_player!.GlobalPosition) > TrackingActivationRange)
+			{
+				Velocity = Vector2.Zero;
+				_attackTimer.Stop();
+				return;
+			}
+			_hasActivatedTracking = true;
+		}
 		if (_player is PlayerController player && player.IsDead)
 		{
 			// Death does not freeze the encounter: revealed trackers keep their last
@@ -164,9 +200,19 @@ public partial class ActiveEnemyController : CharacterBody2D, IDamageable
 		if (_destroyed || amount <= 0.0f)
 			return;
 		_health = Mathf.Max(0.0f, _health - amount);
+		FlashHit();
 		EmitSignal(SignalName.Damaged, amount, _health);
 		if (_health <= 0.0f)
 			Destroy(true);
+	}
+
+	private void FlashHit()
+	{
+		if (_hitFlashMaterial == null)
+			return;
+		_hitFlashSeconds = HitFlashDuration;
+		_hitFlashMaterial.SetShaderParameter("flash_color", Colors.White);
+		_hitFlashMaterial.SetShaderParameter("flash_amount", 1.0f);
 	}
 
 	private void OnAttackTimerTimeout()
@@ -178,7 +224,7 @@ public partial class ActiveEnemyController : CharacterBody2D, IDamageable
 
 	private void OnDetectionBodyEntered(Node body)
 	{
-		if (_hasBeenRevealed && body is PlayerController player)
+		if (_hasBeenRevealed && _hasActivatedTracking && body is PlayerController player)
 			AttackPlayer(player);
 	}
 
@@ -188,7 +234,7 @@ public partial class ActiveEnemyController : CharacterBody2D, IDamageable
 			return;
 		if (player.IsDead)
 			return;
-		player.TakeDamage(AttackDamage);
+		player.TakeDamage(AttackDamage, bypassShield: true);
 		Destroy(false);
 	}
 
