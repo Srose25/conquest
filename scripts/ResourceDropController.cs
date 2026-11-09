@@ -9,7 +9,7 @@ public partial class ResourceDropController : Area2D
 
 	public override void _Ready()
 	{
-		CollisionLayer = 0;
+		CollisionLayer = 4;
 		CollisionMask = 1;
 		BodyEntered += OnBodyEntered;
 	}
@@ -39,6 +39,10 @@ public partial class ResourceDropController : Area2D
 		}
 	}
 
+	public void PullToward(Vector2 target, float speed, float delta)
+	{
+		GlobalPosition = GlobalPosition.MoveToward(target, Mathf.Max(0.0f, speed) * delta);
+	}
 	private void OnBodyEntered(Node body)
 	{
 		if (body is not PlayerController player)
