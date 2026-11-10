@@ -12,6 +12,7 @@ public partial class BulletController : Area2D
 	private float _remainingLifetime;
 	private Node? _source;
 	private bool _hasHit;
+	private float _damage = 1.0f;
 	public Vector2 Direction => _direction;
 
 	public override void _Ready()
@@ -25,11 +26,12 @@ public partial class BulletController : Area2D
 		QueueRedraw();
 	}
 
-	public void Initialize(Vector2 direction, float speed, Node? source = null)
+	public void Initialize(Vector2 direction, float speed, Node? source = null, float damage = 1.0f)
 	{
 		_direction = direction.LengthSquared() > Mathf.Epsilon ? direction.Normalized() : Vector2.Right;
 		_speed = Mathf.Max(0.0f, speed);
 		_source = source;
+		_damage = Mathf.Max(0.0f, damage);
 		Rotation = _direction.Angle();
 	}
 
@@ -56,9 +58,9 @@ public partial class BulletController : Area2D
 		_hasHit = true;
 		BulletImpactController.Spawn(this, GlobalPosition);
 		if (body is IDamageable damageable)
-			damageable.TakeDamage(1.0f, this);
+			damageable.TakeDamage(_damage, this);
 		else if (body.GetParent() is IDamageable parentDamageable)
-			parentDamageable.TakeDamage(1.0f, this);
+			parentDamageable.TakeDamage(_damage, this);
 		EmitSignal(SignalName.Hit, body);
 		QueueFree();
 	}

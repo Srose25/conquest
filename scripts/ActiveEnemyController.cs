@@ -13,6 +13,7 @@ public partial class ActiveEnemyController : CharacterBody2D, IDamageable
 	[Export] public int ResourceYieldMin { get; set; } = 1;
 	[Export] public int ResourceYieldMax { get; set; } = 2;
 	[Export(PropertyHint.Range, "0,1,0.05")] public float PelletDropChance { get; set; } = 0.20f;
+	[Export] public int XpDropAmount { get; set; } = 5;
 	[Export] public int BreakPixelCountMin { get; set; } = 7;
 	[Export] public int BreakPixelCountMax { get; set; } = 9;
 	[Export] public float MoveSpeed { get; set; } = 85.0f;
@@ -284,6 +285,8 @@ public partial class ActiveEnemyController : CharacterBody2D, IDamageable
 		int minimum = Mathf.Max(0, ResourceYieldMin);
 		int maximum = Mathf.Max(minimum, ResourceYieldMax);
 		int yield = _random.RandiRange(minimum, maximum);
+		// Medium asteroids have a fixed five-point XP award, independent of repair drops.
+		XpDropController.Spawn(this, GlobalPosition, Mathf.Max(1, XpDropAmount));
 		int pixelMinimum = Mathf.Max(0, BreakPixelCountMin);
 		int pixelMaximum = Mathf.Max(pixelMinimum, BreakPixelCountMax);
 		BreakEffectController.Spawn(this, GlobalPosition, _random.RandiRange(pixelMinimum, pixelMaximum));

@@ -13,6 +13,8 @@ public partial class BreakableEntityController : RigidBody2D, IDamageable
 	[Export] public int ResourceYieldMin { get; set; } = 1;
 	[Export] public int ResourceYieldMax { get; set; } = 1;
 	[Export(PropertyHint.Range, "0,1,0.05")] public float PelletDropChance { get; set; } = 0.15f;
+	[Export] public int XpDropMin { get; set; } = 1;
+	[Export] public int XpDropMax { get; set; } = 3;
 	[Export] public int BreakPixelCountMin { get; set; } = 3;
 	[Export] public int BreakPixelCountMax { get; set; } = 5;
 	[Export] public float PushSlowdownDurationSeconds { get; set; } = 10.0f;
@@ -139,6 +141,11 @@ public partial class BreakableEntityController : RigidBody2D, IDamageable
 		int minimum = Mathf.Max(0, ResourceYieldMin);
 		int maximum = Mathf.Max(minimum, ResourceYieldMax);
 		int yield = _random.RandiRange(minimum, maximum);
+		// Small asteroids always award 1-3 XP; repair pellets remain a separate,
+		// chance-based drop so the two progression systems do not share state.
+		int xpMinimum = Mathf.Max(1, XpDropMin);
+		int xpMaximum = Mathf.Max(xpMinimum, XpDropMax);
+		XpDropController.Spawn(this, GlobalPosition, _random.RandiRange(xpMinimum, xpMaximum));
 		int pixelMinimum = Mathf.Max(0, BreakPixelCountMin);
 		int pixelMaximum = Mathf.Max(pixelMinimum, BreakPixelCountMax);
 		BreakEffectController.Spawn(this, GlobalPosition, _random.RandiRange(pixelMinimum, pixelMaximum));

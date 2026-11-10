@@ -21,6 +21,8 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 	[Export(PropertyHint.Range, "0,1,0.05")] public float RepairPelletDropChance { get; set; } = 0.35f;
 	[Export] public int RepairPelletMin { get; set; } = 1;
 	[Export] public int RepairPelletMax { get; set; } = 2;
+	[Export] public int XpDropMin { get; set; } = 9;
+	[Export] public int XpDropMax { get; set; } = 15;
 	[Export] public float LinkedAllyAlertRange { get; set; } = 520.0f;
 	[Export] public PackedScene? EnemyBoltScene { get; set; }
 	[Export] public Vector2 LeftGunOffset { get; set; } = new(-8.0f, -17.0f);
@@ -910,6 +912,11 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 		{
 			_destroyed = true;
 			EnemyShipExplosionController.Spawn(this, GlobalPosition, GlobalRotation);
+			// Enemy ships always award a random 9-15 XP, while repair pellets keep
+			// their existing independent chance and healing behavior.
+			int xpMinimum = Mathf.Max(9, XpDropMin);
+			int xpMaximum = Mathf.Max(xpMinimum, XpDropMax);
+			XpDropController.Spawn(this, GlobalPosition, _random.RandiRange(xpMinimum, xpMaximum));
 			if (_random.Randf() <= RepairPelletDropChance)
 			{
 				int minimum = Mathf.Max(1, RepairPelletMin);

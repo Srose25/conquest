@@ -2,7 +2,7 @@
 using Godot;
 
 /// <summary>A collectible resource dropped by a destroyed entity.</summary>
-public partial class ResourceDropController : Area2D
+public partial class ResourceDropController : Area2D, IMagnetizableDrop
 {
 	[Signal] public delegate void CollectedEventHandler(int amount);
 	[Export] public int Amount { get; set; } = 1;

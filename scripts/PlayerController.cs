@@ -20,6 +20,7 @@ using Godot;
 	[Export] public float MouseMovementInfluence { get; set; } = 0.35f;
 	[Export] public float LowMagnetSpeed { get; set; } = 120.0f;
 	[Export] public float HighMagnetSpeed { get; set; } = 300.0f;
+	[Export] public float BulletDamage { get; private set; } = 1.0f;
 
 	public float Health { get; private set; }
 	public float Shield { get; private set; }
@@ -163,6 +164,16 @@ using Godot;
 			FlashHit(new Color("26cfff"), RepairFlashDuration);
 	}
 
+	/// <summary>Applies the automatic utility-point reward from a level-up.</summary>
+	public void ApplyLevelUpUpgrade(float healthIncrease, float shieldIncrease, float damageIncrease)
+	{
+		MaxHealth += Mathf.Max(0.0f, healthIncrease);
+		Health = Mathf.Min(MaxHealth, Health + Mathf.Max(0.0f, healthIncrease));
+		MaxShield += Mathf.Max(0.0f, shieldIncrease);
+		Shield = Mathf.Min(MaxShield, Shield + Mathf.Max(0.0f, shieldIncrease));
+		BulletDamage += Mathf.Max(0.0f, damageIncrease);
+	}
+
 	public override void _PhysicsProcess(double delta)
 	{
 		Vector2 input = GetMovementInput();
@@ -244,20 +255,22 @@ using Godot;
 		return Vector2.FromAngle(octantAngle);
 	}
 
-	/// <summary>Pulls nearby resource drops through the two player magnet fields.</summary>
+	/// <summary>Pulls nearby repair and XP drops through the two player magnet fields.</summary>
 	private void HandleMagnetism(float delta)
 	{
-		var attractedDrops = new HashSet<ResourceDropController>();
+		// Keep the drops as separate entities, but deduplicate them through their
+		// shared magnetic movement contract so the stronger inner field wins.
+		var attractedDrops = new HashSet<IMagnetizableDrop>();
 		// Process the inner field first so its stronger pull wins in the overlap.
 		AttractDropsInField(_highMagnetField, HighMagnetSpeed, delta, attractedDrops);
 		AttractDropsInField(_lowMagnetField, LowMagnetSpeed, delta, attractedDrops);
 	}
 
-	private void AttractDropsInField(Area2D field, float speed, float delta, HashSet<ResourceDropController> attractedDrops)
+	private void AttractDropsInField(Area2D field, float speed, float delta, HashSet<IMagnetizableDrop> attractedDrops)
 	{
 		foreach (Area2D area in field.GetOverlappingAreas())
 		{
-			if (area is not ResourceDropController drop || !attractedDrops.Add(drop))
+			if (area is not IMagnetizableDrop drop || !attractedDrops.Add(drop))
 				continue;
 			drop.PullToward(GlobalPosition, speed, delta);
 		}
@@ -297,7 +310,7 @@ using Godot;
 		Area2D bullet = BulletScene.Instantiate<Area2D>();
 		if (bullet is BulletController controller)
 		{
-			controller.Initialize(direction, BulletSpeed, this);
+			controller.Initialize(direction, BulletSpeed, this, BulletDamage);
 		}
 		bullet.GlobalPosition = _muzzle.GlobalPosition;
 		Node parent = GetTree().CurrentScene ?? GetParent();
