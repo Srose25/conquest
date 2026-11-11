@@ -3,12 +3,12 @@
 importer="font_data_dynamic"
 type="FontFile"
 uid="uid://dy08larodo3qa"
-path="res://.godot/imported/RostavePersonalUse-Eaylz.otf-e41dde89da34564bb6fa8050cade271f.fontdata"
+path="res://.godot/imported/RostavePersonalUse-Eaylz.otf-16d5d5eec5d15f57af51215ebc292918.fontdata"
 
 [deps]
 
-source_file="res://Sprites/RostavePersonalUse-Eaylz.otf"
-dest_files=["res://.godot/imported/RostavePersonalUse-Eaylz.otf-e41dde89da34564bb6fa8050cade271f.fontdata"]
+source_file="res://Fonts/Rostave/RostavePersonalUse-Eaylz.otf"
+dest_files=["res://.godot/imported/RostavePersonalUse-Eaylz.otf-16d5d5eec5d15f57af51215ebc292918.fontdata"]
 
 [params]
 
