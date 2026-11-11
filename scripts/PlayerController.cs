@@ -34,6 +34,8 @@ using Godot;
 	private Marker2D _muzzle = null!;
 	private Area2D _lowMagnetField = null!;
 	private Area2D _highMagnetField = null!;
+	private Area2D _xpMagnetField = null!;
+	private CircleShape2D _xpMagnetShape = null!;
 	private Sprite2D _crosshair = null!;
 	private ShaderMaterial? _hitFlashMaterial;
 	private float _hitFlashSeconds;
@@ -54,6 +56,8 @@ using Godot;
 		_muzzle = GetNode<Marker2D>("Cursor");
 		_lowMagnetField = GetNode<Area2D>("LowMagnetField");
 		_highMagnetField = GetNode<Area2D>("HighMagnetField");
+		_xpMagnetField = GetNode<Area2D>("XpMagnetField");
+		_xpMagnetShape = (CircleShape2D)GetNode<CollisionShape2D>("XpMagnetField/CollisionShape2D").Shape;
 		_crosshair = GetNode<Sprite2D>("Crosshair");
 		Sprite2D sprite = GetNode<Sprite2D>("Sprite2D");
 		if (sprite.Material is ShaderMaterial material)
@@ -66,6 +70,7 @@ using Godot;
 		_fireCooldown.OneShot = true;
 		// The ship artwork faces local up; the rotation correction maps this to the aim direction.
 		_muzzle.Position = Vector2.Up * MuzzleOffset;
+		UpdateXpMagnetCoverage();
 
 		// Keep the exported reference editor-configurable, but recover if the
 		// serialized C# property is missing or stale in the scene file.
@@ -184,6 +189,7 @@ using Godot;
 		Vector2 aimDirection = AimAtCursor();
 		Vector2 input = GetMovementInput();
 		float step = (float)delta;
+		UpdateXpMagnetCoverage();
 		HandleMagnetism(step);
 		if (input == Vector2.Zero)
 		{
@@ -273,25 +279,41 @@ using Godot;
 		return Vector2.FromAngle(octantAngle);
 	}
 
-	/// <summary>Pulls nearby repair and XP drops through the two player magnet fields.</summary>
+	/// <summary>Pulls repair pellets through two local rings and XP through its own camera-sized field.</summary>
 	private void HandleMagnetism(float delta)
 	{
-		// Keep the drops as separate entities, but deduplicate them through their
-		// shared magnetic movement contract so the stronger inner field wins.
+		// Both drop types keep the established close/outer rings. The XP-only
+		// camera field runs afterward as a fallback, so an XP pellet outside those
+		// rings still cannot be abandoned at a camera edge.
 		var attractedDrops = new HashSet<IMagnetizableDrop>();
 		// Process the inner field first so its stronger pull wins in the overlap.
 		AttractDropsInField(_highMagnetField, HighMagnetSpeed, delta, attractedDrops);
 		AttractDropsInField(_lowMagnetField, LowMagnetSpeed, delta, attractedDrops);
+		AttractDropsInField(_xpMagnetField, LowMagnetSpeed * 0.5f, delta, attractedDrops, xpOnly: true);
 	}
 
-	private void AttractDropsInField(Area2D field, float speed, float delta, HashSet<IMagnetizableDrop> attractedDrops)
+	private void AttractDropsInField(Area2D field, float speed, float delta, HashSet<IMagnetizableDrop> attractedDrops, bool xpOnly = false)
 	{
 		foreach (Area2D area in field.GetOverlappingAreas())
 		{
-			if (area is not IMagnetizableDrop drop || !attractedDrops.Add(drop))
+			if (area is not IMagnetizableDrop drop
+				|| (xpOnly && area is not XpDropController)
+				|| !attractedDrops.Add(drop))
 				continue;
 			drop.PullToward(GlobalPosition, speed, delta);
 		}
+	}
+
+	private void UpdateXpMagnetCoverage()
+	{
+		Camera2D? camera = GetViewport().GetCamera2D();
+		Vector2 visibleWorldSize = GetViewportRect().Size * (camera?.Zoom ?? Vector2.One);
+		// A circle using the viewport diagonal covers every visible corner, rather
+		// than merely the center-to-edge distance. The camera-follow offset is
+		// included so its intentional smoothing delay never leaves an XP pellet
+		// outside the player's magnet field.
+		float cameraOffset = camera == null ? 0.0f : GlobalPosition.DistanceTo(camera.GetScreenCenterPosition());
+		_xpMagnetShape.Radius = visibleWorldSize.Length() * 0.5f + cameraOffset + 8.0f;
 	}
 
 	private Vector2 AimAtCursor()

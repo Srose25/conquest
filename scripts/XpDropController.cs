@@ -17,7 +17,9 @@ public partial class XpDropController : Area2D, IMagnetizableDrop
 
 	public override void _Ready()
 	{
-		CollisionLayer = 4;
+		// Layer 3 keeps the normal nearby magnet rings working; layer 5 is the
+		// player's dedicated camera-wide XP magnet field.
+		CollisionLayer = (1 << 2) | (1 << 4);
 		CollisionMask = 1;
 		BodyEntered += OnBodyEntered;
 		GetNode<Sprite2D>("Sprite2D").Texture = GetTextureForAmount(Amount);
