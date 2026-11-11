@@ -17,6 +17,9 @@ using Godot;
 	[Export] public float ShieldRegenDurationSeconds { get; set; } = 5.0f;
 	[Export] public float CoastStopSeconds { get; set; } = 10.0f;
 	[Export] public float DirectionChangeSeconds { get; set; } = 0.9f;
+	[Export] public float ForwardSpeedMultiplier { get; set; } = 1.0f;
+	[Export] public float StrafeSpeedMultiplier { get; set; } = 0.75f;
+	[Export] public float ReverseSpeedMultiplier { get; set; } = 0.60f;
 	[Export] public float MouseMovementInfluence { get; set; } = 0.35f;
 	[Export] public float LowMagnetSpeed { get; set; } = 120.0f;
 	[Export] public float HighMagnetSpeed { get; set; } = 300.0f;
@@ -176,6 +179,9 @@ using Godot;
 
 	public override void _PhysicsProcess(double delta)
 	{
+		// Update heading before calculating thrust, so moving the mouse immediately
+		// changes whether the same WASD input is forward, strafing, or reverse.
+		Vector2 aimDirection = AimAtCursor();
 		Vector2 input = GetMovementInput();
 		float step = (float)delta;
 		HandleMagnetism(step);
@@ -186,7 +192,10 @@ using Godot;
 		}
 		else
 		{
-			Vector2 targetVelocity = input * MoveSpeed;
+			Vector2 shipForward = -GlobalTransform.Y;
+			float alignment = Mathf.Clamp(shipForward.Dot(input), -1.0f, 1.0f);
+			float speedMultiplier = GetHeadingSpeedMultiplier(alignment);
+			Vector2 targetVelocity = input * MoveSpeed * speedMultiplier;
 			bool changingDirection = Velocity.LengthSquared() > 0.01f && Velocity.Dot(targetVelocity) < 0.0f;
 			float acceleration = MoveSpeed / Mathf.Max(0.1f, changingDirection ? DirectionChangeSeconds : 1.5f);
 			Velocity = Velocity.MoveToward(targetVelocity, acceleration * step);
@@ -195,9 +204,18 @@ using Godot;
 		Vector2 positionBeforeAsteroidContacts = GlobalPosition;
 		MoveAndSlide();
 		HandleAsteroidContacts(velocityBeforeAsteroidContacts, positionBeforeAsteroidContacts, step);
-		Vector2 direction = AimAtCursor();
 		if (Input.IsMouseButtonPressed(MouseButton.Left) && _fireCooldown.TimeLeft <= 0.0)
-			Fire(direction);
+			Fire(aimDirection);
+	}
+
+	private float GetHeadingSpeedMultiplier(float alignment)
+	{
+		float forward = Mathf.Max(0.0f, ForwardSpeedMultiplier);
+		float strafe = Mathf.Clamp(StrafeSpeedMultiplier, 0.0f, forward);
+		float reverse = Mathf.Clamp(ReverseSpeedMultiplier, 0.0f, strafe);
+		return alignment >= 0.0f
+			? Mathf.Lerp(strafe, forward, alignment)
+			: Mathf.Lerp(reverse, strafe, alignment + 1.0f);
 	}
 
 	private void HandleAsteroidContacts(Vector2 velocityBeforeContact, Vector2 positionBeforeContact, float delta)

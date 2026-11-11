@@ -2,6 +2,7 @@
 using Godot;
 
 /// <summary>Draws the player's XP progress and current level in the HUD.</summary>
+[Tool]
 public partial class ExperienceBarController : Control
 {
 	private ProgressionManager? _progression;
@@ -16,21 +17,28 @@ public partial class ExperienceBarController : Control
 		QueueRedraw();
 	}
 
-	public override void _Process(double delta) => QueueRedraw();
+	public override void _Process(double delta)
+	{
+		// In the editor this very same Control is the draggable visual dummy. The
+		// fallback values match a brand-new run's empty level-0 XP meter.
+		if (!Engine.IsEditorHint())
+			_progression ??= GetTree().CurrentScene?.GetNodeOrNull<ProgressionManager>("ProgressionManager");
+		QueueRedraw();
+	}
 
 	public override void _Draw()
 	{
-		if (_progression == null)
-			return;
-
 		// Keep the XP meter in the same visual family as HealthBarController:
 		// metallic outer frame, inset dark fill, bright animated-color fill, and
 		// thin edge highlights. The XP-specific green palette is retained here.
 		float width = Size.X;
 		float height = Mathf.Min(BarHeight, Size.Y);
 		Font font = ThemeDB.FallbackFont;
-		string title = $"LEVEL {_progression.Level}";
-		string value = $"XP {_progression.Experience} / {_progression.ExperienceRequired}";
+		int level = _progression?.Level ?? 0;
+		int experience = _progression?.Experience ?? 0;
+		int requiredExperience = _progression?.ExperienceRequired ?? ProgressionManager.ExperienceThresholds[0];
+		string title = $"LEVEL {level}";
+		string value = $"XP {experience} / {requiredExperience}";
 		DrawString(font, new Vector2(0, 15), title, HorizontalAlignment.Left, -1, 14, Colors.White);
 		DrawString(font, new Vector2(width - 120, 15), value, HorizontalAlignment.Right, 120, 12, Colors.White);
 
@@ -40,7 +48,7 @@ public partial class ExperienceBarController : Control
 			bar.Position + new Vector2(Border, Border),
 			new Vector2(bar.Size.X - Border * 2.0f, bar.Size.Y - Border * 2.0f));
 		DrawRect(innerBar, new Color("143110"));
-		float fraction = Mathf.Clamp((float)_progression.Experience / Mathf.Max(1, _progression.ExperienceRequired), 0.0f, 1.0f);
+		float fraction = Mathf.Clamp((float)experience / Mathf.Max(1, requiredExperience), 0.0f, 1.0f);
 		if (fraction > 0.0f)
 			DrawExperienceFill(innerBar, innerBar.Size.X * fraction);
 		DrawLine(bar.Position, new Vector2(bar.End.X, bar.Position.Y), new Color("5dd64d"), 1.0f, true);

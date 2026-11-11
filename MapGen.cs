@@ -16,6 +16,7 @@ public partial class MapGen : Node2D
 	[Export(PropertyHint.Range, "0,1,0.05")] public float EnemyShipSpawnChance { get; set; } = 0.2f;
 	[Export] public int EnemyShipsMinPerChunk { get; set; } = 1;
 	[Export] public int EnemyShipsMaxPerChunk { get; set; } = 2;
+	[Export] public int EnemyShipUnlockLevel { get; set; } = 1;
 	[Export] public float ReferenceChunkSize { get; set; } = 480.0f;
 	[Export] public float PassiveDensityMultiplier { get; set; } = 1.25f;
 	[Export] public float PlayerClearanceRadius { get; set; } = 180.0f;
@@ -31,6 +32,8 @@ public partial class MapGen : Node2D
 	private Node2D _passiveEntities = null!;
 	private Node2D _activeEntities = null!;
 	private Node2D? _player;
+	private ProgressionManager? _progression;
+	private bool _enemyShipsUnlocked;
 	private Vector2I _lastPlayerChunk = new(int.MinValue, int.MinValue);
 
 	private readonly struct ChunkRequest
@@ -64,6 +67,7 @@ public partial class MapGen : Node2D
 			return;
 
 		Vector2I playerChunk = GetChunk(_player!.GlobalPosition);
+		UpdateEnemyShipAvailability(playerChunk);
 		if (playerChunk != _lastPlayerChunk)
 		{
 			bool firstChunkEntry = _lastPlayerChunk.X == int.MinValue;
@@ -82,6 +86,20 @@ public partial class MapGen : Node2D
 		RemoveTrackersOutsideActiveRadius(playerChunk);
 		RemovePassiveAsteroidsOutsideActiveRadius(playerChunk);
 		QueueRedraw();
+	}
+
+	private void UpdateEnemyShipAvailability(Vector2I playerChunk)
+	{
+		_progression ??= GetTree().CurrentScene?.GetNodeOrNull<ProgressionManager>("ProgressionManager");
+		if (_enemyShipsUnlocked
+			|| _progression == null
+			|| _progression.Level < Mathf.Max(1, EnemyShipUnlockLevel))
+			return;
+
+		_enemyShipsUnlocked = true;
+		// A run can level up without crossing a chunk boundary. Populate only the
+		// outer ring at that moment so the nearby 3x3 protection box stays clear.
+		SpawnEnemyShipsForOuterRing(playerChunk);
 	}
 
 	public override void _Draw()
@@ -205,6 +223,8 @@ public partial class MapGen : Node2D
 
 	private void SpawnEnemyShipsForOuterRing(Vector2I centerChunk)
 	{
+		if (!_enemyShipsUnlocked)
+			return;
 		for (int y = -2; y <= 2; y++)
 		{
 			for (int x = -2; x <= 2; x++)
@@ -328,7 +348,7 @@ public partial class MapGen : Node2D
 
 	private void SpawnEnemyShipsForChunk(Vector2I chunk, bool isInitialGeneration)
 	{
-		if (EnemyShipScene == null || HasEnemyShipInChunk(chunk))
+		if (!_enemyShipsUnlocked || EnemyShipScene == null || HasEnemyShipInChunk(chunk))
 			return;
 		int spawnAttempt = _enemyShipSpawnAttempts.GetValueOrDefault(chunk) + 1;
 		_enemyShipSpawnAttempts[chunk] = spawnAttempt;

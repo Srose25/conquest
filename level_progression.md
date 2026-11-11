@@ -25,4 +25,5 @@ The XP meter resets after each level-up. These are the XP required to reach the 
 - Small asteroids (`PassiveEntity`, `meteor1.png`) award a random 1–3 XP.
 - Medium asteroids (`ActiveEnemy`, `meteor2.png`) award 5 XP.
 - Enemy ships award a random 9–15 XP.
-- Each award is rendered greedily with 15, 9, 5, 2, and 1 XP sprites, minimizing the number of spawned pickups.
+- Enemy ships begin spawning only after the player reaches level 1; the starting level remains ship-free.
+- Ordinary awards split randomly into 9, 5, 2, and 1 XP sprites (for example, 15 XP may be `5+5+5` or `9+5+1`). The 15 XP sprite is reserved for future boss-sized rewards.

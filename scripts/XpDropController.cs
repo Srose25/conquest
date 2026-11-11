@@ -3,7 +3,7 @@ using Godot;
 
 /// <summary>
 /// Collectible experience pickup. One scene supports all denominations so the
-/// drop spawner can compose an award with the largest sprites first.
+/// drop spawner can compose an award into collectible denominations.
 /// </summary>
 public partial class XpDropController : Area2D, IMagnetizableDrop
 {
@@ -30,8 +30,11 @@ public partial class XpDropController : Area2D, IMagnetizableDrop
 		_burstElapsed = 0.0f;
 	}
 
-	/// <summary>Spawns a greedy 15/9/5/2/1 denomination decomposition.</summary>
-	public static void Spawn(Node source, Vector2 position, int amount)
+	/// <summary>
+	/// Spawns an XP award. Ordinary enemies deliberately split large rewards into
+	/// 9/5/2/1 pellets; the 15-value pellet is reserved for future boss rewards.
+	/// </summary>
+	public static void Spawn(Node source, Vector2 position, int amount, bool allowLargePellet = false)
 	{
 		if (amount <= 0)
 			return;
@@ -45,25 +48,38 @@ public partial class XpDropController : Area2D, IMagnetizableDrop
 		random.Randomize();
 		float hitboxRadius = GetSourceHitboxRadius(source);
 		int remaining = amount;
-		int[] denominations = { 15, 9, 5, 2, 1 };
+		int[] denominations = allowLargePellet
+			? new[] { 15, 9, 5, 2, 1 }
+			: new[] { 9, 5, 2, 1 };
+		while (remaining > 0)
+		{
+			int denomination = ChooseDenomination(remaining, denominations, random);
+			remaining -= denomination;
+			XpDropController drop = scene.Instantiate<XpDropController>();
+			drop.Amount = denomination;
+			Vector2 direction = Vector2.FromAngle(random.RandfRange(0.0f, Mathf.Tau));
+			float initialDistance = Mathf.Sqrt(random.Randf()) * hitboxRadius * 0.45f;
+			Vector2 dropPosition = position + direction * initialDistance;
+			drop.InitializeBurst(direction, random.RandfRange(0.55f, 1.20f) * hitboxRadius);
+			if (parent is Node2D parent2D)
+				drop.Position = parent2D.ToLocal(dropPosition);
+			else
+				drop.GlobalPosition = dropPosition;
+			parent.AddChild(drop);
+		}
+	}
+
+	private static int ChooseDenomination(int remaining, int[] denominations, RandomNumberGenerator random)
+	{
+		// Randomizing among valid smaller values makes a 15-point award feel like a
+		// compact burst of pickups: for example 5+5+5 or 9+5+1, not a fixed recipe.
+		Godot.Collections.Array<int> valid = new();
 		foreach (int denomination in denominations)
 		{
-			while (remaining >= denomination)
-			{
-				remaining -= denomination;
-				XpDropController drop = scene.Instantiate<XpDropController>();
-				drop.Amount = denomination;
-				Vector2 direction = Vector2.FromAngle(random.RandfRange(0.0f, Mathf.Tau));
-				float initialDistance = Mathf.Sqrt(random.Randf()) * hitboxRadius * 0.45f;
-				Vector2 dropPosition = position + direction * initialDistance;
-				drop.InitializeBurst(direction, random.RandfRange(0.55f, 1.20f) * hitboxRadius);
-				if (parent is Node2D parent2D)
-					drop.Position = parent2D.ToLocal(dropPosition);
-				else
-					drop.GlobalPosition = dropPosition;
-				parent.AddChild(drop);
-			}
+			if (denomination <= remaining)
+				valid.Add(denomination);
 		}
+		return valid[random.RandiRange(0, valid.Count - 1)];
 	}
 
 	public void PullToward(Vector2 target, float speed, float delta)

@@ -2,6 +2,7 @@
 using Godot;
 
 /// <summary>Draws the player's health as twenty red segments at the top-left of the screen.</summary>
+[Tool]
 public partial class HealthBarController : Control
 {
 	private const float LowHealthWarningThreshold = 6.0f;
@@ -43,6 +44,14 @@ public partial class HealthBarController : Control
 
 	public override void _Process(double delta)
 	{
+		// The HUD control doubles as its own layout dummy in the 2D editor. It
+		// renders the same full-health, full-shield launch appearance there, while
+		// its Control offsets remain directly draggable and are used at runtime.
+		if (Engine.IsEditorHint())
+		{
+			QueueRedraw();
+			return;
+		}
 		_player ??= GetTree().GetFirstNodeInGroup("player") as PlayerController;
 		bool isInLowHealthState = _player != null
 			&& !_player.IsDead
@@ -113,8 +122,10 @@ public partial class HealthBarController : Control
 
 	private void DrawPlayerShieldBar(float width, float healthBarHeight)
 	{
-		if (_player == null || _player.MaxShield <= 0.0f)
+		float maxShield = _player?.MaxShield ?? 20.0f;
+		if (maxShield <= 0.0f)
 			return;
+		float currentShield = _player?.Shield ?? maxShield;
 
 		float height = healthBarHeight * 0.25f;
 		Rect2 outerRect = new(0.0f, healthBarHeight + 2.0f, width, height);
@@ -126,7 +137,8 @@ public partial class HealthBarController : Control
 
 		Rect2 innerRect = outerRect.GrowIndividual(-1.0f, -1.0f, -1.0f, -1.0f);
 		DrawCapsule(innerRect, new Color(0.0f, 0.08f, 0.13f, 0.94f));
-		float fraction = Mathf.Clamp(_displayedShield / _player.MaxShield, 0.0f, 1.0f);
+		float displayedShield = _displayedShield >= 0.0f ? _displayedShield : currentShield;
+		float fraction = Mathf.Clamp(displayedShield / maxShield, 0.0f, 1.0f);
 		float fillWidth = innerRect.Size.X * fraction;
 		if (fillWidth <= 0.0f)
 			return;
