@@ -3,8 +3,8 @@
 [ext_resource type="PackedScene" uid="uid://c8vfwsrsb8j1m" path="res://scenes/actors/Player.tscn" id="1_80nbo"]
 [ext_resource type="PackedScene" uid="uid://c6kt303fr3pb2" path="res://scenes/game/World.tscn" id="2_world"]
 [ext_resource type="Script" uid="uid://ci26lh868jatg" path="res://scripts/HealthBarController.cs" id="3_health_bar"]
-[ext_resource type="Script" path="res://scripts/ProgressionManager.cs" id="4_progression"]
-[ext_resource type="Script" path="res://scripts/ExperienceBarController.cs" id="5_experience_bar"]
+[ext_resource type="Script" uid="uid://dul4h3cfmghyi" path="res://scripts/ProgressionManager.cs" id="4_progression"]
+[ext_resource type="Script" uid="uid://41om7fdragcj" path="res://scripts/ExperienceBarController.cs" id="5_experience_bar"]
 
 [node name="Game" type="Node2D" unique_id=1763646068]
 
@@ -31,16 +31,15 @@ offset_bottom = 66.0
 grow_horizontal = 0
 script = ExtResource("3_health_bar")
 
-[node name="ExperienceBar" type="Control" parent="UI"]
-layout_mode = 0
+[node name="ExperienceBar" type="Control" parent="UI" unique_id=1211348168]
+layout_mode = 3
+anchors_preset = 2
 anchor_top = 1.0
-anchor_right = 0.0
 anchor_bottom = 1.0
-offset_left = 24.0
-offset_top = -82.0
-offset_right = 384.0
-offset_bottom = -24.0
-grow_horizontal = 0
+offset_left = 17.0
+offset_top = -53.0
+offset_right = 377.0
+offset_bottom = 5.0
 grow_vertical = 0
 script = ExtResource("5_experience_bar")
 
