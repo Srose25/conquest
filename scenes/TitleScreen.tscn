@@ -1,0 +1,133 @@
+[gd_scene format=3 uid="uid://bvk3ymyf0o0hk"]
+
+[ext_resource type="Script" uid="uid://ckdoi8yyrtff8" path="res://scripts/TitleScreen.cs" id="1_title"]
+[ext_resource type="Texture2D" uid="uid://cl4y3io6eshlu" path="res://Image Renders/Conquest Title Screen.png" id="2_logo"]
+[ext_resource type="Texture2D" uid="uid://dwl8qjc07ijap" path="res://Sprites/Backgrounds/Stars_Far.png" id="3_far"]
+[ext_resource type="Texture2D" uid="uid://dguh2kecckpu0" path="res://Sprites/Backgrounds/Stars_Mid.png" id="4_mid"]
+[ext_resource type="Texture2D" uid="uid://djinj5s747j0x" path="res://Sprites/Backgrounds/Stars_Near.png" id="5_near"]
+[ext_resource type="FontFile" uid="uid://dy08larodo3qa" path="res://Fonts/Rostave/RostavePersonalUse-Eaylz.otf" id="6_font"]
+[ext_resource type="Shader" uid="uid://brim5r77t465t" path="res://shaders/StarfieldScroll.gdshader" id="7_star_shader"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_far"]
+shader = ExtResource("7_star_shader")
+shader_parameter/scroll_scale = 0.16
+shader_parameter/tile_scale = 2.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_mid"]
+shader = ExtResource("7_star_shader")
+shader_parameter/scroll_scale = 0.38
+shader_parameter/tile_scale = 2.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_near"]
+shader = ExtResource("7_star_shader")
+shader_parameter/scroll_scale = 0.62
+shader_parameter/tile_scale = 2.0
+
+[sub_resource type="Theme" id="Theme_menu"]
+default_font = ExtResource("6_font")
+default_font_size = 30
+
+[node name="TitleScreen" type="Control" unique_id=1769299044]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_title")
+
+[node name="BlackBackground" type="ColorRect" parent="." unique_id=1935445645]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 1)
+
+[node name="FarStars" type="TextureRect" parent="." unique_id=570062602]
+material = SubResource("ShaderMaterial_far")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_far")
+expand_mode = 1
+stretch_mode = 1
+
+[node name="MidStars" type="TextureRect" parent="." unique_id=298072111]
+material = SubResource("ShaderMaterial_mid")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("4_mid")
+expand_mode = 1
+stretch_mode = 1
+
+[node name="NearStars" type="TextureRect" parent="." unique_id=1731652945]
+material = SubResource("ShaderMaterial_near")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("5_near")
+expand_mode = 1
+stretch_mode = 1
+
+[node name="TitleLogo" type="TextureRect" parent="." unique_id=1923594286]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 390.0
+grow_horizontal = 2
+mouse_filter = 2
+texture = ExtResource("2_logo")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="MenuPanel" type="PanelContainer" parent="." unique_id=1614137350]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -190.0
+offset_top = -285.0
+offset_right = 190.0
+offset_bottom = -35.0
+grow_horizontal = 2
+grow_vertical = 0
+theme = SubResource("Theme_menu")
+
+[node name="Menu" type="VBoxContainer" parent="MenuPanel" unique_id=265232467]
+layout_mode = 2
+theme_override_constants/separation = 14
+alignment = 1
+
+[node name="PlayButton" type="Button" parent="MenuPanel/Menu" unique_id=818897154]
+custom_minimum_size = Vector2(0, 58)
+layout_mode = 2
+text = "PLAY"
+
+[node name="SettingsButton" type="Button" parent="MenuPanel/Menu" unique_id=1305897360]
+custom_minimum_size = Vector2(0, 58)
+layout_mode = 2
+tooltip_text = "Settings will be available in a future update."
+text = "SETTINGS"
+
+[node name="QuitButton" type="Button" parent="MenuPanel/Menu" unique_id=12514156]
+custom_minimum_size = Vector2(0, 58)
+layout_mode = 2
+text = "QUIT"
