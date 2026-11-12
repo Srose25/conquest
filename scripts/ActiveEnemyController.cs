@@ -35,6 +35,8 @@ public partial class ActiveEnemyController : CharacterBody2D, IDamageable
 	private float _hitFlashSeconds;
 	private const float HitFlashDuration = 0.12f;
 
+	public bool IsEngagingPlayer => _hasActivatedTracking && _hasBeenRevealed && !_destroyed && _screenNotifier.IsOnScreen();
+
 	public override void _Ready()
 	{
 		CollisionLayer = 1 << 2;

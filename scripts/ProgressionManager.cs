@@ -10,6 +10,7 @@ public partial class ProgressionManager : Node
 	// The first value is the XP needed to leave level 0; later values are the
 	// thresholds documented in progression.md. Level 10 is the last authored tier.
 	public static readonly int[] ExperienceThresholds = { 50, 100, 150, 200, 300, 600, 1200, 2000, 4000, 8000 };
+	[Export] public int PlayerStatUpgradeStartLevel { get; set; } = 5;
 	public int Level { get; private set; }
 	public int Experience { get; private set; }
 	public int ExperienceRequired => Level < ExperienceThresholds.Length ? ExperienceThresholds[Level] : ExperienceThresholds[^1] * 2;
@@ -18,6 +19,7 @@ public partial class ProgressionManager : Node
 
 	public override void _Ready()
 	{
+		AddToGroup("progression_manager");
 		CallDeferred(MethodName.FindPlayer);
 	}
 
@@ -47,8 +49,12 @@ public partial class ProgressionManager : Node
 	{
 		if (_player == null)
 			return;
-		// Automatic, deliberately modest upgrades: +2 max/current HP, +2 shield,
-		// and +0.25 bullet damage per level. Values are documented through level 10.
-		_player.ApplyLevelUpUpgrade(2.0f, 2.0f, 0.25f);
+		// The early run stays at its starting HP, shield, and bolt damage. All
+		// player stat scaling begins together at level 5.
+		bool canScaleStats = Level >= Mathf.Max(1, PlayerStatUpgradeStartLevel);
+		_player.ApplyLevelUpUpgrade(
+			canScaleStats ? 2.0f : 0.0f,
+			canScaleStats ? 2.0f : 0.0f,
+			canScaleStats ? 0.25f : 0.0f);
 	}
 }

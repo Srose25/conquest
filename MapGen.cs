@@ -13,10 +13,11 @@ public partial class MapGen : Node2D
 	[Export] public int PassiveEntitiesPerChunk { get; set; } = 5;
 	[Export] public int ActiveEnemiesMinPerChunk { get; set; } = 1;
 	[Export] public int ActiveEnemiesMaxPerChunk { get; set; } = 5;
-	[Export(PropertyHint.Range, "0,1,0.05")] public float EnemyShipSpawnChance { get; set; } = 0.2f;
+	[Export] public int TrackerUnlockLevel { get; set; } = 2;
+	[Export(PropertyHint.Range, "0,1,0.05")] public float EnemyShipSpawnChance { get; set; } = 0.4f;
 	[Export] public int EnemyShipsMinPerChunk { get; set; } = 1;
 	[Export] public int EnemyShipsMaxPerChunk { get; set; } = 2;
-	[Export] public int EnemyShipUnlockLevel { get; set; } = 1;
+	[Export] public int EnemyShipUnlockLevel { get; set; } = 3;
 	[Export] public float ReferenceChunkSize { get; set; } = 480.0f;
 	[Export] public float PassiveDensityMultiplier { get; set; } = 1.25f;
 	[Export] public float PlayerClearanceRadius { get; set; } = 180.0f;
@@ -33,6 +34,7 @@ public partial class MapGen : Node2D
 	private Node2D _activeEntities = null!;
 	private Node2D? _player;
 	private ProgressionManager? _progression;
+	private bool _trackersUnlocked;
 	private bool _enemyShipsUnlocked;
 	private Vector2I _lastPlayerChunk = new(int.MinValue, int.MinValue);
 
@@ -67,7 +69,7 @@ public partial class MapGen : Node2D
 			return;
 
 		Vector2I playerChunk = GetChunk(_player!.GlobalPosition);
-		UpdateEnemyShipAvailability(playerChunk);
+		UpdateHostileAvailability(playerChunk);
 		if (playerChunk != _lastPlayerChunk)
 		{
 			bool firstChunkEntry = _lastPlayerChunk.X == int.MinValue;
@@ -88,18 +90,29 @@ public partial class MapGen : Node2D
 		QueueRedraw();
 	}
 
-	private void UpdateEnemyShipAvailability(Vector2I playerChunk)
+	private void UpdateHostileAvailability(Vector2I playerChunk)
 	{
+		_progression ??= GetTree().GetFirstNodeInGroup("progression_manager") as ProgressionManager;
 		_progression ??= GetTree().CurrentScene?.GetNodeOrNull<ProgressionManager>("ProgressionManager");
-		if (_enemyShipsUnlocked
-			|| _progression == null
-			|| _progression.Level < Mathf.Max(1, EnemyShipUnlockLevel))
+		if (_progression == null)
 			return;
 
-		_enemyShipsUnlocked = true;
-		// A run can level up without crossing a chunk boundary. Populate only the
-		// outer ring at that moment so the nearby 3x3 protection box stays clear.
-		SpawnEnemyShipsForOuterRing(playerChunk);
+		// A run can level up without crossing a chunk boundary. Unlocking either
+		// hostile type populates only the outer ring, preserving the nearby 3x3
+		// protection box.
+		if (!_trackersUnlocked && _progression.Level >= Mathf.Max(1, TrackerUnlockLevel))
+		{
+			_trackersUnlocked = true;
+			// Some chunks were already generated while trackers were locked. Roll
+			// those eligible chunks immediately so level 2 always activates tracker
+			// spawning without waiting for the player to leave them behind.
+			SpawnTrackersForEligibleActiveChunks(playerChunk, "unlock");
+		}
+		if (!_enemyShipsUnlocked && _progression.Level >= Mathf.Max(1, EnemyShipUnlockLevel))
+		{
+			_enemyShipsUnlocked = true;
+			SpawnEnemyShipsForOuterRing(playerChunk);
+		}
 	}
 
 	public override void _Draw()
@@ -174,6 +187,8 @@ public partial class MapGen : Node2D
 
 	private void SpawnTrackersForChunkVisit(Vector2I chunk)
 	{
+		if (!_trackersUnlocked)
+			return;
 		int visitNumber = _chunkVisitCounts.GetValueOrDefault(chunk) + 1;
 		_chunkVisitCounts[chunk] = visitNumber;
 		SpawnTrackersForChunk(chunk, visitNumber, $"visit{visitNumber}");
@@ -181,6 +196,8 @@ public partial class MapGen : Node2D
 
 	private void SpawnTrackersForInitialOuterChunks(Vector2I centerChunk)
 	{
+		if (!_trackersUnlocked)
+			return;
 		int radius = Mathf.Max(0, GenerationRadius);
 		for (int y = -radius; y <= radius; y++)
 		{
@@ -191,6 +208,19 @@ public partial class MapGen : Node2D
 				Vector2I chunk = new(centerChunk.X + x, centerChunk.Y + y);
 				SpawnTrackersForChunk(chunk, 0, "initial");
 			}
+		}
+	}
+
+	private void SpawnTrackersForEligibleActiveChunks(Vector2I playerChunk, string nameSuffix)
+	{
+		if (!_trackersUnlocked)
+			return;
+		int radius = Mathf.Max(0, GenerationRadius);
+		foreach (Vector2I chunk in _generatedChunks)
+		{
+			int distance = GetChunkDistance(chunk, playerChunk);
+			if (distance > 1 && distance <= radius)
+				SpawnTrackersForChunk(chunk, _chunkVisitCounts.GetValueOrDefault(chunk), nameSuffix);
 		}
 	}
 
@@ -237,7 +267,7 @@ public partial class MapGen : Node2D
 
 	private void SpawnTrackersForChunk(Vector2I chunk, int seedVisit, string nameSuffix)
 	{
-		if (HasTrackerInChunk(chunk) || _random.Randf() < Mathf.Clamp(SafeChunkChance, 0.0f, 1.0f) || ActiveEnemyScene == null)
+		if (!_trackersUnlocked || HasTrackerInChunk(chunk) || _random.Randf() < Mathf.Clamp(SafeChunkChance, 0.0f, 1.0f) || ActiveEnemyScene == null)
 			return;
 
 		RandomNumberGenerator random = new();
@@ -342,7 +372,13 @@ public partial class MapGen : Node2D
 			for (int i = 0; i < passiveCount; i++)
 				SpawnEntity(PassiveEntityScene, _passiveEntities, $"Passive_{chunk.X}_{chunk.Y}_{i}", chunk, random, asteroidClearance);
 			if (!IsInsideProtectionBox(chunk, GetChunk(_player?.GlobalPosition ?? Vector2.Zero)))
+			{
+				// New edge chunks enter the active 5x5 window outside the protected
+				// 3x3 area. They need their tracker roll now, rather than only after
+				// they have travelled behind the player.
+				SpawnTrackersForChunk(chunk, _chunkVisitCounts.GetValueOrDefault(chunk), "generated");
 				SpawnEnemyShipsForChunk(chunk, isInitialGeneration);
+			}
 		}
 	}
 

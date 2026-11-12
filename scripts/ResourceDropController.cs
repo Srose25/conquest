@@ -45,6 +45,10 @@ public partial class ResourceDropController : Area2D, IMagnetizableDrop
 	{
 		if (amount <= 0)
 			return;
+		// Repair pellets enter the run only after the player has reached level 1.
+		ProgressionManager? progression = source.GetTree().CurrentScene?.GetNodeOrNull<ProgressionManager>("ProgressionManager");
+		if (progression == null || progression.Level < 1)
+			return;
 		PackedScene? scene = GD.Load<PackedScene>("res://scenes/resources/ResourceDrop.tscn");
 		if (scene == null)
 			return;

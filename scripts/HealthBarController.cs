@@ -34,11 +34,18 @@ public partial class HealthBarController : Control
 	private float _shieldHitCollectionElapsed = -1.0f;
 	private int _shieldHitsInCollection;
 	private bool _showShieldLossFlash;
+	private float _baseHudWidth;
+	private float _segmentFootprint;
 
 	public override void _Ready()
 	{
 		ProcessMode = ProcessModeEnum.Always;
 		MouseFilter = MouseFilterEnum.Ignore;
+		_baseHudWidth = Size.X;
+		const float border = 2.0f;
+		const float dividerWidth = 1.0f;
+		float segmentWidth = (_baseHudWidth - border * 2.0f - dividerWidth * (SegmentCount - 1)) / SegmentCount;
+		_segmentFootprint = segmentWidth + dividerWidth;
 		QueueRedraw();
 	}
 
@@ -53,6 +60,7 @@ public partial class HealthBarController : Control
 			return;
 		}
 		_player ??= GetTree().GetFirstNodeInGroup("player") as PlayerController;
+		UpdateHudWidth();
 		bool isInLowHealthState = _player != null
 			&& !_player.IsDead
 			&& _player.Health > 0.0f
@@ -89,11 +97,12 @@ public partial class HealthBarController : Control
 		const float border = 2.0f;
 		float width = Size.X;
 		float height = Mathf.Min(HealthBarHeight, Size.Y);
+		int segmentCount = GetEffectiveSegmentCount();
 		int filledSegments = _player == null || _player.MaxHealth <= 0.0f
-			? SegmentCount
-			: Mathf.Clamp(Mathf.CeilToInt(_player.Health), 0, SegmentCount);
+			? segmentCount
+			: Mathf.Clamp(Mathf.CeilToInt(_player.Health), 0, segmentCount);
 		const float dividerWidth = 1.0f;
-		float segmentWidth = (width - border * 2.0f - dividerWidth * (SegmentCount - 1)) / SegmentCount;
+		float segmentWidth = (width - border * 2.0f - dividerWidth * (segmentCount - 1)) / segmentCount;
 
 		DrawMetalGradient(new Rect2(Vector2.Zero, new Vector2(width, height)));
 		DrawEmptySteelFill(
@@ -109,7 +118,7 @@ public partial class HealthBarController : Control
 		}
 		DrawSegmentTransition(border, height, segmentWidth, dividerWidth);
 
-		for (int i = 1; i < SegmentCount; i++)
+		for (int i = 1; i < segmentCount; i++)
 		{
 			float x = border + i * segmentWidth + (i - 1) * dividerWidth;
 			DrawMetallicDivider(x, height);
@@ -332,8 +341,8 @@ public partial class HealthBarController : Control
 		AdvanceHitShake(ref _shieldHitShakeElapsed, step);
 
 		int filledSegments = _player == null || _player.MaxHealth <= 0.0f
-			? SegmentCount
-			: Mathf.Clamp(Mathf.CeilToInt(_player.Health), 0, SegmentCount);
+			? GetEffectiveSegmentCount()
+			: Mathf.Clamp(Mathf.CeilToInt(_player.Health), 0, GetEffectiveSegmentCount());
 		if (_player?.IsDead == true)
 		{
 			_lastFilledSegments = filledSegments;
@@ -364,6 +373,21 @@ public partial class HealthBarController : Control
 			if (_segmentTransitionElapsed >= SegmentTransitionDuration)
 				_segmentTransitionElapsed = -1.0f;
 		}
+	}
+
+	private int GetEffectiveSegmentCount()
+	{
+		if (_player == null || _player.MaxHealth <= 0.0f)
+			return SegmentCount;
+		return Mathf.Max(SegmentCount, Mathf.CeilToInt(_player.MaxHealth));
+	}
+
+	private void UpdateHudWidth()
+	{
+		int additionalSegments = GetEffectiveSegmentCount() - SegmentCount;
+		float targetWidth = _baseHudWidth + additionalSegments * _segmentFootprint;
+		if (!Mathf.IsEqualApprox(Size.X, targetWidth))
+			Size = new Vector2(targetWidth, Size.Y);
 	}
 
 	private void AdvanceHitShake(ref float elapsed, float delta)
