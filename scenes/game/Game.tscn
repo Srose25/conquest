@@ -15,7 +15,7 @@
 [ext_resource type="AudioStream" uid="uid://d3mrfg81r1jfd" path="res://OST/Void Dust-Bass.mp3" id="8_vj8ay"]
 [ext_resource type="AudioStream" uid="uid://cp3qdy6ag6fk7" path="res://OST/Void Dust-Drums.mp3" id="9_07vrc"]
 [ext_resource type="FontFile" uid="uid://dy08larodo3qa" path="res://Fonts/Rostave/RostavePersonalUse-Eaylz.otf" id="9_rostave"]
-[ext_resource type="Script" path="res://scripts/GameOverController.cs" id="10_game_over"]
+[ext_resource type="Script" uid="uid://bkvjltjsv4nqw" path="res://scripts/GameOverController.cs" id="10_game_over"]
 
 [sub_resource type="Resource" id="Resource_qf6a8"]
 script = ExtResource("4_qf6a8")
@@ -30,7 +30,7 @@ CombatTrack = ExtResource("7_2kuj7")
 
 [sub_resource type="Resource" id="Resource_ysuoy"]
 script = ExtResource("4_qf6a8")
-OutOfCombatTrack = ExtResource("9_07vrc")
+CombatTrack = ExtResource("9_07vrc")
 
 [sub_resource type="FontVariation" id="FontVariation_oxanium_extra_bold"]
 base_font = ExtResource("7_oxanium")
@@ -215,7 +215,6 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 0
 script = ExtResource("10_game_over")
 
 [node name="Center" type="CenterContainer" parent="UI/GameOver" unique_id=481970105]
