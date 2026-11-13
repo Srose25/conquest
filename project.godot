@@ -14,6 +14,14 @@ config/name="conquest"
 run/main_scene="res://scenes/TitleScreen.tscn"
 config/features=PackedStringArray("4.7", "C#", "Mobile")
 
+[audio]
+
+default_bus_layout="res://default_bus_layout.tres"
+
+[autoload]
+
+AudioSettings="*res://scripts/AudioSettings.cs"
+
 [display]
 
 window/stretch/mode="canvas_items"
@@ -22,6 +30,10 @@ window/stretch/aspect="expand"
 [dotnet]
 
 project/assembly_name="conquest"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/dynamic_music_inspector/plugin.cfg")
 
 [physics]
 

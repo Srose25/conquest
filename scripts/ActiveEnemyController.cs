@@ -35,7 +35,10 @@ public partial class ActiveEnemyController : CharacterBody2D, IDamageable
 	private float _hitFlashSeconds;
 	private const float HitFlashDuration = 0.12f;
 
-	public bool IsEngagingPlayer => _hasActivatedTracking && _hasBeenRevealed && !_destroyed && _screenNotifier.IsOnScreen();
+	// Dormant trackers are environmental set dressing. They only count as combat
+	// once they have been revealed and have actually activated their charge.
+	public bool IsChargingPlayer => _hasActivatedTracking && _hasBeenRevealed && !_destroyed && _screenNotifier.IsOnScreen();
+	public bool IsEngagingPlayer => IsChargingPlayer;
 
 	public override void _Ready()
 	{

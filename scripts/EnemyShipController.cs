@@ -39,6 +39,7 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 	private bool _withinPhysicsWindow = true;
 	private bool _hasBeenRevealed;
 	private bool _hasTargetLock;
+	private float _playerHitCombatCueSeconds;
 	private bool _destroyed;
 	private bool _fireLeftGun = true;
 	private int _burstShotsRemaining;
@@ -96,6 +97,10 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 	private const int MaxConcurrentAttackers = 2;
 
 	public bool HasTargetLock => _hasTargetLock;
+	// A confirmed player bolt hit is also a combat cue, even during the one
+	// physics frame before the ship finishes acquiring its lock.
+	public bool IsMusicCombatActive => (_hasTargetLock || _playerHitCombatCueSeconds > 0.0f)
+		&& _player is PlayerController { IsDead: false };
 
 	public void LinkWith(EnemyShipController ally)
 	{
@@ -132,6 +137,7 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 	public override void _Process(double delta)
 	{
 		float step = (float)delta;
+		_playerHitCombatCueSeconds = Mathf.Max(0.0f, _playerHitCombatCueSeconds - step);
 		_player ??= GetTree().GetFirstNodeInGroup("player") as Node2D;
 		bool showHealthBar = _player is PlayerController player
 			&& !player.IsDead
@@ -273,7 +279,7 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 
 	public void ClearTargetLock()
 	{
-		_hasTargetLock = false;
+		EndCombatEngagement();
 		_burstShotsRemaining = 0;
 		_hasMadePostDeathDecision = false;
 		_patrolRetargetSeconds = 0.0f;
@@ -340,7 +346,7 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 		{
 			// No path—including linked allies or direct-hit reactions—may create a
 			// combat lock before this ship has physically appeared in the camera.
-			_hasTargetLock = false;
+			EndCombatEngagement();
 			_burstShotsRemaining = 0;
 			if (!player.IsDead)
 				PatrolAsteroids(step);
@@ -901,6 +907,9 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 		if (source is BulletController)
 		{
 			FlashHit(Colors.White);
+			// Keep a short cue alive even if an off-screen impact cannot become an
+			// AI lock; the controller's release cushion handles the musical tail.
+			_playerHitCombatCueSeconds = 0.25f;
 			AlertFromPlayerFire();
 			RegisterPlayerHit();
 		}
@@ -976,7 +985,7 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 
 		// Drop the combat lock deliberately: this prevents firing while the ship
 		// turns away to escape or choose a new approach angle.
-		_hasTargetLock = false;
+		EndCombatEngagement();
 		_burstShotsRemaining = 0;
 		_ambushResponseSeconds = 0.0f;
 		// A tactical disengage usually means a lateral dodge and a new angle;
@@ -1043,6 +1052,12 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 			&& IsInstanceValid(_linkedAlly)
 			&& GlobalPosition.DistanceTo(_linkedAlly!.GlobalPosition) <= LinkedAllyAlertRange)
 			_linkedAlly.AlertFromLinkedAlly();
+	}
+
+	private void EndCombatEngagement()
+	{
+		_hasTargetLock = false;
+		_playerHitCombatCueSeconds = 0.0f;
 	}
 
 	private void AlertFromLinkedAlly()

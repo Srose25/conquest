@@ -6,6 +6,7 @@ using Godot;
 	public partial class PlayerController : CharacterBody2D
 {
 	[Signal] public delegate void DamagedEventHandler(float amount, float remainingHealth);
+	[Signal] public delegate void DiedEventHandler();
 	[Export] public float MoveSpeed { get; set; } = 255.0f;
 	[Export] public float FireCooldownSeconds { get; set; } = 0.16f;
 	[Export] public float BulletSpeed { get; set; } = 630.0f;
@@ -104,6 +105,7 @@ using Godot;
 		if (Health <= 0.0f)
 		{
 			DeathExplosionController.Spawn(this, GlobalPosition, GlobalRotation);
+			EmitSignal(SignalName.Died);
 			Visible = false;
 			CollisionLayer = 0;
 			CollisionMask = 0;

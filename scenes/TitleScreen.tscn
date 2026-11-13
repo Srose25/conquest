@@ -7,6 +7,8 @@
 [ext_resource type="Texture2D" uid="uid://djinj5s747j0x" path="res://Sprites/Backgrounds/Stars_Near.png" id="5_near"]
 [ext_resource type="FontFile" uid="uid://dy08larodo3qa" path="res://Fonts/Rostave/RostavePersonalUse-Eaylz.otf" id="6_font"]
 [ext_resource type="Shader" uid="uid://brim5r77t465t" path="res://shaders/StarfieldScroll.gdshader" id="7_star_shader"]
+[ext_resource type="FontFile" uid="uid://ridev7sg7vyk" path="res://Fonts/Oxanium/Oxanium-VariableFont_wght.ttf" id="8_oxanium"]
+[ext_resource type="Script" uid="uid://d30ct6rpcuo0o" path="res://scripts/MainMenuMusicController.cs" id="9_main_menu_music"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_far"]
 shader = ExtResource("7_star_shader")
@@ -26,6 +28,12 @@ shader_parameter/tile_scale = 2.0
 [sub_resource type="Theme" id="Theme_menu"]
 default_font = ExtResource("6_font")
 default_font_size = 30
+
+[sub_resource type="FontVariation" id="FontVariation_oxanium_extra_bold"]
+base_font = ExtResource("8_oxanium")
+variation_opentype = {
+"wght": 800
+}
 
 [node name="TitleScreen" type="Control" unique_id=1769299044]
 layout_mode = 3
@@ -124,10 +132,79 @@ text = "PLAY"
 [node name="SettingsButton" type="Button" parent="MenuPanel/Menu" unique_id=1305897360]
 custom_minimum_size = Vector2(0, 58)
 layout_mode = 2
-tooltip_text = "Settings will be available in a future update."
 text = "SETTINGS"
 
 [node name="QuitButton" type="Button" parent="MenuPanel/Menu" unique_id=12514156]
 custom_minimum_size = Vector2(0, 58)
 layout_mode = 2
 text = "QUIT"
+
+[node name="SettingsPanel" type="PanelContainer" parent="." unique_id=224136998]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -240.0
+offset_top = -190.0
+offset_right = 240.0
+offset_bottom = 190.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = SubResource("Theme_menu")
+
+[node name="Settings" type="VBoxContainer" parent="SettingsPanel" unique_id=92472951]
+layout_mode = 2
+theme_override_constants/separation = 18
+alignment = 1
+
+[node name="Heading" type="Label" parent="SettingsPanel/Settings" unique_id=858195474]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("6_font")
+text = "SETTINGS"
+horizontal_alignment = 1
+
+[node name="BgmLabel" type="Label" parent="SettingsPanel/Settings" unique_id=386495574]
+layout_mode = 2
+theme_override_fonts/font = SubResource("FontVariation_oxanium_extra_bold")
+text = "BGM VOLUME"
+
+[node name="BgmVolumeSlider" type="HSlider" parent="SettingsPanel/Settings" unique_id=287741757]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+value = 50.0
+
+[node name="BgmVolumeValue" type="Label" parent="SettingsPanel/Settings" unique_id=638730270]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("8_oxanium")
+text = "50%"
+horizontal_alignment = 1
+
+[node name="SfxLabel" type="Label" parent="SettingsPanel/Settings" unique_id=216726921]
+layout_mode = 2
+theme_override_fonts/font = SubResource("FontVariation_oxanium_extra_bold")
+text = "SFX VOLUME"
+
+[node name="SfxVolumeSlider" type="HSlider" parent="SettingsPanel/Settings" unique_id=372910172]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+value = 50.0
+
+[node name="SfxVolumeValue" type="Label" parent="SettingsPanel/Settings" unique_id=231312978]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("8_oxanium")
+text = "50%"
+horizontal_alignment = 1
+
+[node name="BackButton" type="Button" parent="SettingsPanel/Settings" unique_id=196028422]
+custom_minimum_size = Vector2(0, 58)
+layout_mode = 2
+theme_override_fonts/font = ExtResource("8_oxanium")
+text = "BACK"
+
+[node name="MainMenuMusic" type="AudioStreamPlayer" parent="." unique_id=565794296]
+bus = &"BGM"
+script = ExtResource("9_main_menu_music")
+FadeInSeconds = 4.0

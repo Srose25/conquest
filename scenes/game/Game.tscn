@@ -4,7 +4,43 @@
 [ext_resource type="PackedScene" uid="uid://c6kt303fr3pb2" path="res://scenes/game/World.tscn" id="2_world"]
 [ext_resource type="Script" uid="uid://ci26lh868jatg" path="res://scripts/HealthBarController.cs" id="3_health_bar"]
 [ext_resource type="Script" uid="uid://dul4h3cfmghyi" path="res://scripts/ProgressionManager.cs" id="4_progression"]
+[ext_resource type="Script" uid="uid://d21cmbj3y1f2y" path="res://scripts/DynamicMusicTrackPair.cs" id="4_qf6a8"]
+[ext_resource type="AudioStream" uid="uid://byi5coamhsjsr" path="res://OST/Void Dust.mp3" id="5_2iokk"]
 [ext_resource type="Script" uid="uid://41om7fdragcj" path="res://scripts/ExperienceBarController.cs" id="5_experience_bar"]
+[ext_resource type="Script" uid="uid://chfi3f55uif3p" path="res://scripts/DynamicMusicController.cs" id="6_dynamic_music"]
+[ext_resource type="AudioStream" uid="uid://b8x2ue46aaf0k" path="res://OST/Void Dust-NoDrums.mp3" id="6_vg8p7"]
+[ext_resource type="AudioStream" uid="uid://d0xobs4sp62qe" path="res://OST/Void Dust-DNB.mp3" id="7_2kuj7"]
+[ext_resource type="FontFile" uid="uid://ridev7sg7vyk" path="res://Fonts/Oxanium/Oxanium-VariableFont_wght.ttf" id="7_oxanium"]
+[ext_resource type="Script" uid="uid://du46vl2i8wgd6" path="res://scripts/PauseMenuController.cs" id="8_pause_menu"]
+[ext_resource type="AudioStream" uid="uid://d3mrfg81r1jfd" path="res://OST/Void Dust-Bass.mp3" id="8_vj8ay"]
+[ext_resource type="AudioStream" uid="uid://cp3qdy6ag6fk7" path="res://OST/Void Dust-Drums.mp3" id="9_07vrc"]
+[ext_resource type="FontFile" uid="uid://dy08larodo3qa" path="res://Fonts/Rostave/RostavePersonalUse-Eaylz.otf" id="9_rostave"]
+[ext_resource type="Script" path="res://scripts/GameOverController.cs" id="10_game_over"]
+
+[sub_resource type="Resource" id="Resource_qf6a8"]
+script = ExtResource("4_qf6a8")
+OutOfCombatTrack = ExtResource("6_vg8p7")
+CombatTrack = ExtResource("5_2iokk")
+AlwaysLoadFirst = true
+
+[sub_resource type="Resource" id="Resource_pbrru"]
+script = ExtResource("4_qf6a8")
+OutOfCombatTrack = ExtResource("8_vj8ay")
+CombatTrack = ExtResource("7_2kuj7")
+
+[sub_resource type="Resource" id="Resource_ysuoy"]
+script = ExtResource("4_qf6a8")
+OutOfCombatTrack = ExtResource("9_07vrc")
+
+[sub_resource type="FontVariation" id="FontVariation_oxanium_extra_bold"]
+base_font = ExtResource("7_oxanium")
+variation_opentype = {
+"wght": 800
+}
+
+[sub_resource type="Theme" id="Theme_pause_menu"]
+default_font = SubResource("FontVariation_oxanium_extra_bold")
+default_font_size = 30
 
 [node name="Game" type="Node2D" unique_id=1763646068]
 
@@ -17,11 +53,25 @@
 [node name="ProgressionManager" type="Node" parent="." unique_id=587658215]
 script = ExtResource("4_progression")
 
+[node name="DynamicMusic" type="Node" parent="." unique_id=998330730]
+script = ExtResource("6_dynamic_music")
+TrackPairs = Array[ExtResource("4_qf6a8")]([SubResource("Resource_qf6a8"), SubResource("Resource_pbrru"), SubResource("Resource_ysuoy")])
+PairCount = 3
+FadeInSeconds = 1.5
+FadeOutSeconds = 3.0
+
+[node name="PlayerA" type="AudioStreamPlayer" parent="DynamicMusic" unique_id=1436087331]
+bus = &"BGM"
+
+[node name="PlayerB" type="AudioStreamPlayer" parent="DynamicMusic" unique_id=914506246]
+bus = &"BGM"
+
 [node name="CameraRig" type="Node2D" parent="." unique_id=1303521827]
 
 [node name="UI" type="CanvasLayer" parent="." unique_id=357686169]
 
 [node name="HealthBar" type="Control" parent="UI" unique_id=30099963]
+process_mode = 3
 layout_mode = 3
 anchors_preset = 0
 offset_left = 24.0
@@ -29,9 +79,11 @@ offset_top = 24.0
 offset_right = 227.0
 offset_bottom = 66.0
 grow_horizontal = 0
+mouse_filter = 2
 script = ExtResource("3_health_bar")
 
 [node name="ExperienceBar" type="Control" parent="UI" unique_id=1211348168]
+process_mode = 3
 layout_mode = 3
 anchors_preset = 2
 anchor_top = 1.0
@@ -41,6 +93,166 @@ offset_top = -53.0
 offset_right = 377.0
 offset_bottom = 5.0
 grow_vertical = 0
+mouse_filter = 2
 script = ExtResource("5_experience_bar")
+
+[node name="PauseMenu" type="Control" parent="UI" unique_id=1754997044]
+process_mode = 3
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("8_pause_menu")
+
+[node name="Dim" type="ColorRect" parent="UI/PauseMenu" unique_id=498170042]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.7)
+
+[node name="PausePanel" type="PanelContainer" parent="UI/PauseMenu" unique_id=237253829]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -240.0
+offset_top = -225.0
+offset_right = 240.0
+offset_bottom = 225.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = SubResource("Theme_pause_menu")
+
+[node name="MainMenu" type="VBoxContainer" parent="UI/PauseMenu/PausePanel" unique_id=1780298058]
+layout_mode = 2
+theme_override_constants/separation = 18
+alignment = 1
+
+[node name="Heading" type="Label" parent="UI/PauseMenu/PausePanel/MainMenu" unique_id=1369633656]
+layout_mode = 2
+text = "PAUSED"
+horizontal_alignment = 1
+
+[node name="ResumeButton" type="Button" parent="UI/PauseMenu/PausePanel/MainMenu" unique_id=132867112]
+custom_minimum_size = Vector2(0, 58)
+layout_mode = 2
+text = "RESUME"
+
+[node name="SettingsButton" type="Button" parent="UI/PauseMenu/PausePanel/MainMenu" unique_id=1421188518]
+custom_minimum_size = Vector2(0, 58)
+layout_mode = 2
+text = "SETTINGS"
+
+[node name="QuitToTitleButton" type="Button" parent="UI/PauseMenu/PausePanel/MainMenu" unique_id=163042713]
+custom_minimum_size = Vector2(0, 58)
+layout_mode = 2
+text = "QUIT TO TITLE"
+
+[node name="SettingsMenu" type="VBoxContainer" parent="UI/PauseMenu/PausePanel" unique_id=15977294]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 18
+alignment = 1
+
+[node name="Heading" type="Label" parent="UI/PauseMenu/PausePanel/SettingsMenu" unique_id=850726462]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("9_rostave")
+text = "SETTINGS"
+horizontal_alignment = 1
+
+[node name="BgmLabel" type="Label" parent="UI/PauseMenu/PausePanel/SettingsMenu" unique_id=945580992]
+layout_mode = 2
+theme_override_fonts/font = SubResource("FontVariation_oxanium_extra_bold")
+text = "BGM VOLUME"
+
+[node name="BgmVolumeSlider" type="HSlider" parent="UI/PauseMenu/PausePanel/SettingsMenu" unique_id=1642646927]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+value = 50.0
+
+[node name="BgmVolumeValue" type="Label" parent="UI/PauseMenu/PausePanel/SettingsMenu" unique_id=1966679699]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("7_oxanium")
+text = "50%"
+horizontal_alignment = 1
+
+[node name="SfxLabel" type="Label" parent="UI/PauseMenu/PausePanel/SettingsMenu" unique_id=1537913508]
+layout_mode = 2
+theme_override_fonts/font = SubResource("FontVariation_oxanium_extra_bold")
+text = "SFX VOLUME"
+
+[node name="SfxVolumeSlider" type="HSlider" parent="UI/PauseMenu/PausePanel/SettingsMenu" unique_id=1638385771]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+value = 50.0
+
+[node name="SfxVolumeValue" type="Label" parent="UI/PauseMenu/PausePanel/SettingsMenu" unique_id=565874251]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("7_oxanium")
+text = "50%"
+horizontal_alignment = 1
+
+[node name="BackButton" type="Button" parent="UI/PauseMenu/PausePanel/SettingsMenu" unique_id=2011034138]
+custom_minimum_size = Vector2(0, 58)
+layout_mode = 2
+theme_override_fonts/font = ExtResource("7_oxanium")
+text = "BACK"
+
+[node name="GameOver" type="Control" parent="UI" unique_id=1623043921]
+process_mode = 3
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+script = ExtResource("10_game_over")
+
+[node name="Center" type="CenterContainer" parent="UI/GameOver" unique_id=481970105]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Menu" type="VBoxContainer" parent="UI/GameOver/Center" unique_id=991413776]
+custom_minimum_size = Vector2(420, 0)
+layout_mode = 2
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="Heading" type="Label" parent="UI/GameOver/Center/Menu" unique_id=1680351338]
+custom_minimum_size = Vector2(0, 132)
+layout_mode = 2
+theme_override_fonts/font = ExtResource("9_rostave")
+theme_override_font_sizes/font_size = 84
+text = "GAME OVER"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="RetryButton" type="Button" parent="UI/GameOver/Center/Menu" unique_id=1545927792]
+custom_minimum_size = Vector2(0, 62)
+layout_mode = 2
+theme_override_fonts/font = ExtResource("7_oxanium")
+theme_override_font_sizes/font_size = 30
+text = "Retry"
+
+[node name="QuitButton" type="Button" parent="UI/GameOver/Center/Menu" unique_id=724746815]
+custom_minimum_size = Vector2(0, 62)
+layout_mode = 2
+theme_override_fonts/font = ExtResource("7_oxanium")
+theme_override_font_sizes/font_size = 30
+text = "Quit"
 
 [node name="Player" parent="." unique_id=1499827582 instance=ExtResource("1_80nbo")]
