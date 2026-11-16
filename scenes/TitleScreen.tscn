@@ -6,24 +6,11 @@
 [ext_resource type="Texture2D" uid="uid://dguh2kecckpu0" path="res://Sprites/Backgrounds/Stars_Mid.png" id="4_mid"]
 [ext_resource type="Texture2D" uid="uid://djinj5s747j0x" path="res://Sprites/Backgrounds/Stars_Near.png" id="5_near"]
 [ext_resource type="FontFile" uid="uid://dy08larodo3qa" path="res://Fonts/Rostave/RostavePersonalUse-Eaylz.otf" id="6_font"]
-[ext_resource type="Shader" uid="uid://brim5r77t465t" path="res://shaders/StarfieldScroll.gdshader" id="7_star_shader"]
 [ext_resource type="FontFile" uid="uid://ridev7sg7vyk" path="res://Fonts/Oxanium/Oxanium-VariableFont_wght.ttf" id="8_oxanium"]
 [ext_resource type="Script" uid="uid://d30ct6rpcuo0o" path="res://scripts/MainMenuMusicController.cs" id="9_main_menu_music"]
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_far"]
-shader = ExtResource("7_star_shader")
-shader_parameter/scroll_scale = 0.16
-shader_parameter/tile_scale = 2.0
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_mid"]
-shader = ExtResource("7_star_shader")
-shader_parameter/scroll_scale = 0.38
-shader_parameter/tile_scale = 2.0
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_near"]
-shader = ExtResource("7_star_shader")
-shader_parameter/scroll_scale = 0.62
-shader_parameter/tile_scale = 2.0
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_additive"]
+blend_mode = 1
 
 [sub_resource type="Theme" id="Theme_menu"]
 default_font = ExtResource("6_font")
@@ -54,44 +41,38 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0, 0, 0, 1)
 
-[node name="FarStars" type="TextureRect" parent="." unique_id=570062602]
-material = SubResource("ShaderMaterial_far")
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
+[node name="FarStars" type="Parallax2D" parent="." unique_id=570062602]
+repeat_size = Vector2(1024, 1024)
+repeat_times = 5
+scroll_scale = Vector2(0.16, 0.16)
+
+[node name="Texture" type="Sprite2D" parent="FarStars"]
 texture = ExtResource("3_far")
-expand_mode = 1
-stretch_mode = 1
+centered = false
+texture_repeat = 2
 
-[node name="MidStars" type="TextureRect" parent="." unique_id=298072111]
-material = SubResource("ShaderMaterial_mid")
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
+[node name="MidStars" type="Parallax2D" parent="." unique_id=298072111]
+repeat_size = Vector2(512, 512)
+repeat_times = 5
+scroll_scale = Vector2(0.38, 0.38)
+
+[node name="Texture" type="Sprite2D" parent="MidStars"]
+material = SubResource("CanvasItemMaterial_additive")
+scale = Vector2(0.5, 0.5)
 texture = ExtResource("4_mid")
-expand_mode = 1
-stretch_mode = 1
+centered = false
+texture_repeat = 2
 
-[node name="NearStars" type="TextureRect" parent="." unique_id=1731652945]
-material = SubResource("ShaderMaterial_near")
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
+[node name="NearStars" type="Parallax2D" parent="." unique_id=1731652945]
+repeat_size = Vector2(1024, 1024)
+repeat_times = 5
+scroll_scale = Vector2(0.62, 0.62)
+
+[node name="Texture" type="Sprite2D" parent="NearStars"]
+material = SubResource("CanvasItemMaterial_additive")
 texture = ExtResource("5_near")
-expand_mode = 1
-stretch_mode = 1
+centered = false
+texture_repeat = 2
 
 [node name="TitleLogo" type="TextureRect" parent="." unique_id=1923594286]
 layout_mode = 1

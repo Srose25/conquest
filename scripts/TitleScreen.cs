@@ -18,7 +18,15 @@ public partial class TitleScreen : Control
 	private Label _sfxVolumeValue = null!;
 	private MainMenuMusicController _mainMenuMusic = null!;
 	private AudioSettings _audioSettings = null!;
+	private Parallax2D _farStars = null!;
+	private Parallax2D _midStars = null!;
+	private Parallax2D _nearStars = null!;
 	private bool _transitionStarted;
+
+	// The former shader scrolled each layer at viewport-height * 0.1 * its
+	// parallax rate. Keep that motion while the visuals themselves now use the
+	// exact same Parallax2D tiles as World.tscn.
+	private const float StarScrollMultiplier = 0.10f;
 
 	public override void _Ready()
 	{
@@ -33,6 +41,9 @@ public partial class TitleScreen : Control
 		_sfxVolumeValue = GetNode<Label>("SettingsPanel/Settings/SfxVolumeValue");
 		_mainMenuMusic = GetNode<MainMenuMusicController>("MainMenuMusic");
 		_audioSettings = GetNode<AudioSettings>("/root/AudioSettings");
+		_farStars = GetNode<Parallax2D>("FarStars");
+		_midStars = GetNode<Parallax2D>("MidStars");
+		_nearStars = GetNode<Parallax2D>("NearStars");
 
 		_playButton.Pressed += OnPlayPressed;
 		_settingsButton.Pressed += OpenSettings;
@@ -44,6 +55,14 @@ public partial class TitleScreen : Control
 		_sfxVolumeSlider.ValueChanged += OnSfxVolumeChanged;
 		UpdateVolumeLabels();
 		StartMainMenuMusic();
+	}
+
+	public override void _Process(double delta)
+	{
+		float pixelsPerSecond = GetViewportRect().Size.Y * StarScrollMultiplier;
+		_farStars.ScrollOffset += Vector2.Down * pixelsPerSecond * 0.16f * (float)delta;
+		_midStars.ScrollOffset += Vector2.Down * pixelsPerSecond * 0.38f * (float)delta;
+		_nearStars.ScrollOffset += Vector2.Down * pixelsPerSecond * 0.62f * (float)delta;
 	}
 
 	private void StartMainMenuMusic()
