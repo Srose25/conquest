@@ -33,6 +33,7 @@ func _make_pair_editor(index: int, pair: Resource) -> VBoxContainer:
 	box.add_child(title)
 	box.add_child(_make_track_row("Out of Combat (empty = Silence)", pair, "OutOfCombatTrack", index))
 	box.add_child(_make_track_row("Combat", pair, "CombatTrack", index))
+	box.add_child(_make_tempo_row(pair, index))
 	var always_first := CheckBox.new()
 	always_first.text = "Always Load First"
 	always_first.button_pressed = pair != null and pair.get("AlwaysLoadFirst")
@@ -61,6 +62,25 @@ func _make_track_row(label_text: String, pair: Resource, property_name: String, 
 	row.add_child(picker)
 	return row
 
+func _make_tempo_row(pair: Resource, index: int) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var label := Label.new()
+	label.text = "Tempo (BPM)"
+	label.custom_minimum_size = Vector2(188, 0)
+	row.add_child(label)
+	var tempo := SpinBox.new()
+	tempo.min_value = 30.0
+	tempo.max_value = 300.0
+	tempo.step = 0.01
+	tempo.allow_greater = false
+	tempo.value = float(pair.get("TempoBpm")) if pair != null else 135.0
+	tempo.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tempo.value_changed.connect(_set_pair_tempo.bind(index))
+	add_focusable(tempo)
+	row.add_child(tempo)
+	return row
+
 func _set_pair_track(resource: Resource, index: int, property_name: String) -> void:
 	if not _updating:
 		_set_pair_property(index, property_name, resource)
@@ -68,6 +88,10 @@ func _set_pair_track(resource: Resource, index: int, property_name: String) -> v
 func _commit_always_first(button: CheckBox, index: int) -> void:
 	if not _updating:
 		_set_pair_property(index, "AlwaysLoadFirst", button.button_pressed)
+
+func _set_pair_tempo(value: float, index: int) -> void:
+	if not _updating:
+		_set_pair_property(index, "TempoBpm", value)
 
 func _set_pair_property(index: int, property_name: String, value: Variant) -> void:
 	var pairs: Array = get_edited_object().get(get_edited_property()).duplicate()

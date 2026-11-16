@@ -17,6 +17,7 @@ public partial class MapGen : Node2D
 	[Export(PropertyHint.Range, "0,1,0.05")] public float EnemyShipSpawnChance { get; set; } = 0.4f;
 	[Export] public int EnemyShipsMinPerChunk { get; set; } = 1;
 	[Export] public int EnemyShipsMaxPerChunk { get; set; } = 2;
+	[Export] public int MaxEnemyShipsFollowingPlayer { get; set; } = 6;
 	[Export] public int EnemyShipUnlockLevel { get; set; } = 3;
 	[Export] public float ReferenceChunkSize { get; set; } = 480.0f;
 	[Export] public float PassiveDensityMultiplier { get; set; } = 1.25f;
@@ -60,6 +61,7 @@ public partial class MapGen : Node2D
 		EnemyShipScene ??= GD.Load<PackedScene>("res://scenes/actors/EnemyShip.tscn");
 		_passiveEntities = GetNode<Node2D>("PassiveEntities");
 		_activeEntities = GetNode<Node2D>("ActiveEntities");
+		AddToGroup("map_generator");
 	}
 
 	public override void _Process(double delta)
@@ -417,6 +419,31 @@ public partial class MapGen : Node2D
 				return true;
 		}
 		return false;
+	}
+
+	/// <summary>
+	/// Ships may populate the whole generated world, but only a readable wing of
+	/// nearby ships may actively pursue the player at once.
+	/// </summary>
+	public bool CanEnemyShipAcquireTargetLock(EnemyShipController ship)
+	{
+		if (_player == null || !IsInstanceValid(ship))
+			return false;
+		Vector2I playerChunk = GetChunk(_player.GlobalPosition);
+		if (GetChunkDistance(GetChunk(ship.GlobalPosition), playerChunk) > 1)
+			return false;
+
+		int count = 0;
+		foreach (Node child in _activeEntities.GetChildren())
+		{
+			if (child is EnemyShipController candidate
+				&& IsInstanceValid(candidate)
+				&& candidate.HasTargetLock)
+			{
+				count++;
+			}
+		}
+		return count < Mathf.Max(1, MaxEnemyShipsFollowingPlayer);
 	}
 
 	private static bool IsInsideProtectionBox(Vector2I chunk, Vector2I playerChunk) => GetChunkDistance(chunk, playerChunk) <= 1;

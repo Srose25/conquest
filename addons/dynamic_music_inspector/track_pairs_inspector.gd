@@ -2,6 +2,7 @@
 extends EditorInspectorPlugin
 
 const TrackPairsEditor := preload("res://addons/dynamic_music_inspector/track_pairs_editor.gd")
+const BossThemesEditor := preload("res://addons/dynamic_music_inspector/boss_themes_editor.gd")
 
 func _can_handle(object: Object) -> bool:
 	# C# script instances do not consistently expose their .cs resource path to
@@ -11,7 +12,10 @@ func _can_handle(object: Object) -> bool:
 
 func _parse_property(object: Object, type: Variant.Type, name: String, hint_type: PropertyHint, hint_string: String, usage_flags: int, wide: bool) -> bool:
 	# C# export names can reach editor plugins in either C# or Godot casing.
-	if name != "track_pairs" and name != "TrackPairs":
-		return false
-	add_property_editor(name, TrackPairsEditor.new())
-	return true
+	if name == "track_pairs" or name == "TrackPairs":
+		add_property_editor(name, TrackPairsEditor.new())
+		return true
+	if name == "boss_themes" or name == "BossThemes":
+		add_property_editor(name, BossThemesEditor.new())
+		return true
+	return false

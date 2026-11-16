@@ -32,6 +32,24 @@ public partial class DynamicMusicController : Node
 	[ExportToolButton("Add Pair", Icon = "Add")]
 	public Callable AddPairButton => Callable.From(AddPair);
 
+	// Bosses choose one of these explicit slots.  Each slot owns both its audio
+	// stream and its own tempo, so a 145 BPM boss never inherits the normal OST's
+	// 135 BPM cue timing.
+	[ExportCategory("Boss music slots")]
+	[Export] public Godot.Collections.Array<DynamicMusicBossTheme> BossThemes { get; set; } = new();
+	[Export]
+	public int BossThemeCount
+	{
+		get => BossThemes.Count;
+		set
+		{
+			ResizeBossThemes(Mathf.Max(0, value));
+			NotifyPropertyListChanged();
+		}
+	}
+	[ExportToolButton("Add Boss Theme", Icon = "Add")]
+	public Callable AddBossThemeButton => Callable.From(AddBossTheme);
+
 	[ExportGroup("Automatic game states")]
 	[Export(PropertyHint.Range, "0,20,0.1")] public float CombatReleaseCushionSeconds { get; set; } = 4.0f;
 
@@ -40,7 +58,7 @@ public partial class DynamicMusicController : Node
 	[Export(PropertyHint.Range, "0,4,0.01")] public float FadeOutSeconds { get; set; } = 0.40f;
 
 	[ExportGroup("Cue timing")]
-	[Export(PropertyHint.Range, "30,300,0.01")] public float BeatsPerMinute { get; set; } = 135.0f;
+	[Export(PropertyHint.Range, "30,300,0.01")] public float FallbackTempoBpm { get; set; } = 135.0f;
 	[Export(PropertyHint.Range, "1,16,1")] public int BeatsPerBar { get; set; } = 4;
 	[Export] public float BeatOffsetSeconds { get; set; }
 
@@ -57,6 +75,8 @@ public partial class DynamicMusicController : Node
 	private DynamicMusicTrackPair? _previousPair;
 	private DynamicMusicTrackPair? _pendingPair;
 	private AudioStream? _pendingBossTrack;
+	private float _pendingBossTempoBpm;
+	private float _bossTempoBpm = 135.0f;
 	private MusicState _currentState = MusicState.OutOfCombat;
 	private MusicState? _pendingState;
 	private double _pendingCueTime;
@@ -226,15 +246,29 @@ public partial class DynamicMusicController : Node
 		EmitSignal(SignalName.TransitionQueued, (int)state, _pendingCueTime);
 	}
 
-	/// <summary>Queues a boss theme from 0:00 at the next completed bar.</summary>
-	public void RequestBossTheme(AudioStream bossTrack)
+	/// <summary>Queues a boss-owned theme from 0:00 at the next completed bar.</summary>
+	public void RequestBossTheme(DynamicMusicBossTheme bossTheme)
+	{
+		if (bossTheme.Track != null)
+			RequestBossTheme(bossTheme.Track, bossTheme.TempoBpm);
+	}
+
+	/// <summary>
+	/// Queues a boss theme from 0:00 at the next completed bar. Callers that do
+	/// not use a resource may pass their boss track's own BPM directly.
+	/// </summary>
+	public void RequestBossTheme(AudioStream bossTrack, float tempoBpm = -1.0f)
 	{
 		if (_bossThemeActive && _activePlayer.Stream == bossTrack)
 			return;
+		// Enter on a completed bar of the currently playing arrangement. The boss
+		// BPM only becomes active after that handoff has begun.
+		double cueTime = GetNextBarTime();
 		_pendingPair = null;
 		_pendingState = null;
 		_pendingBossTrack = bossTrack;
-		_pendingCueTime = GetNextBarTime();
+		_pendingBossTempoBpm = NormalizeTempo(tempoBpm);
+		_pendingCueTime = cueTime;
 		EmitSignal(SignalName.BossThemeQueued, _pendingCueTime);
 	}
 
@@ -244,8 +278,9 @@ public partial class DynamicMusicController : Node
 		_pendingBossTrack = null;
 		if (!_bossThemeActive)
 			return;
+		double exitCueTime = GetNextBarTime();
 		_bossThemeActive = false;
-		QueueNextPair(MusicState.OutOfCombat);
+		QueueNextPair(MusicState.OutOfCombat, exitCueTime);
 	}
 
 	public void OnBossDefeated() => EndBossTheme();
@@ -320,6 +355,7 @@ public partial class DynamicMusicController : Node
 	private void BeginBossTheme(AudioStream track)
 	{
 		_pendingBossTrack = null;
+		_bossTempoBpm = NormalizeTempo(_pendingBossTempoBpm);
 		BeginTrackTransition(track, MusicState.Combat, 0.0f);
 		_bossThemeActive = true;
 	}
@@ -602,7 +638,7 @@ public partial class DynamicMusicController : Node
 
 	private double GetNextBarTime()
 	{
-		double beatsPerSecond = Mathf.Max(1.0f, BeatsPerMinute) / 60.0;
+		double beatsPerSecond = GetCurrentTempoBpm() / 60.0;
 		int beatsPerBar = Mathf.Max(1, BeatsPerBar);
 		// The transport is anchored to the common 0:00 of the current pair, so
 		// bar cues and the incoming track use the exact same clock.
@@ -621,6 +657,15 @@ public partial class DynamicMusicController : Node
 		return remainder < 0.0 ? remainder + divisor : remainder;
 	}
 
+	private float GetCurrentTempoBpm()
+	{
+		if (_bossThemeActive)
+			return NormalizeTempo(_bossTempoBpm);
+		return NormalizeTempo(_currentPair?.TempoBpm ?? FallbackTempoBpm);
+	}
+
+	private float NormalizeTempo(float tempoBpm) => tempoBpm > 0.0f ? Mathf.Clamp(tempoBpm, 30.0f, 300.0f) : FallbackTempoBpm;
+
 	private void AddPair()
 	{
 		TrackPairs.Add(new DynamicMusicTrackPair());
@@ -633,6 +678,20 @@ public partial class DynamicMusicController : Node
 			TrackPairs.Add(new DynamicMusicTrackPair());
 		while (TrackPairs.Count > count)
 			TrackPairs.RemoveAt(TrackPairs.Count - 1);
+	}
+
+	private void AddBossTheme()
+	{
+		BossThemes.Add(new DynamicMusicBossTheme());
+		NotifyPropertyListChanged();
+	}
+
+	private void ResizeBossThemes(int count)
+	{
+		while (BossThemes.Count < count)
+			BossThemes.Add(new DynamicMusicBossTheme());
+		while (BossThemes.Count > count)
+			BossThemes.RemoveAt(BossThemes.Count - 1);
 	}
 
 	private static AudioStream? GetTrack(DynamicMusicTrackPair pair, MusicState state) => state == MusicState.Combat ? pair.CombatTrack : pair.OutOfCombatTrack;

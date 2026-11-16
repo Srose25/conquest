@@ -12,6 +12,7 @@ public partial class DynamicMusicTrackPair : Resource
 	// Empty deliberately means silence. A combat-only pair is valid.
 	[Export] public AudioStream? OutOfCombatTrack { get; set; }
 	[Export] public AudioStream? CombatTrack { get; set; }
+	[Export(PropertyHint.Range, "30,300,0.01")] public float TempoBpm { get; set; } = 135.0f;
 	[Export] public bool AlwaysLoadFirst { get; set; }
 
 	public bool IsComplete => CombatTrack != null;

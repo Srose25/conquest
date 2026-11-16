@@ -16,6 +16,8 @@
 [ext_resource type="AudioStream" uid="uid://cp3qdy6ag6fk7" path="res://OST/Void Dust-Drums.mp3" id="9_07vrc"]
 [ext_resource type="FontFile" uid="uid://dy08larodo3qa" path="res://Fonts/Rostave/RostavePersonalUse-Eaylz.otf" id="9_rostave"]
 [ext_resource type="Script" uid="uid://bkvjltjsv4nqw" path="res://scripts/GameOverController.cs" id="10_game_over"]
+[ext_resource type="Script" uid="uid://coi6n3xuw0i4s" path="res://scripts/DynamicMusicBossTheme.cs" id="10_vj8ay"]
+[ext_resource type="AudioStream" uid="uid://ekawewwdrc8l" path="res://OST/Watcher.mp3" id="11_07vrc"]
 
 [sub_resource type="Resource" id="Resource_qf6a8"]
 script = ExtResource("4_qf6a8")
@@ -31,6 +33,12 @@ CombatTrack = ExtResource("7_2kuj7")
 [sub_resource type="Resource" id="Resource_ysuoy"]
 script = ExtResource("4_qf6a8")
 CombatTrack = ExtResource("9_07vrc")
+
+[sub_resource type="Resource" id="Resource_6k07o"]
+script = ExtResource("10_vj8ay")
+BossLabel = "The Watcher"
+Track = ExtResource("11_07vrc")
+TempoBpm = 165.0
 
 [sub_resource type="FontVariation" id="FontVariation_oxanium_extra_bold"]
 base_font = ExtResource("7_oxanium")
@@ -57,6 +65,8 @@ script = ExtResource("4_progression")
 script = ExtResource("6_dynamic_music")
 TrackPairs = Array[ExtResource("4_qf6a8")]([SubResource("Resource_qf6a8"), SubResource("Resource_pbrru"), SubResource("Resource_ysuoy")])
 PairCount = 3
+BossThemes = Array[ExtResource("10_vj8ay")]([SubResource("Resource_6k07o")])
+BossThemeCount = 1
 FadeInSeconds = 1.5
 FadeOutSeconds = 3.0
 
@@ -255,3 +265,4 @@ theme_override_font_sizes/font_size = 30
 text = "Quit"
 
 [node name="Player" parent="." unique_id=1499827582 instance=ExtResource("1_80nbo")]
+position = Vector2(576, 324)

@@ -10,6 +10,8 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 	[Export] public float ShieldRegenDelaySeconds { get; set; } = 5.0f;
 	[Export] public float ShieldRegenDurationSeconds { get; set; } = 5.0f;
 	[Export] public float MoveSpeed { get; set; } = 200.0f;
+	[Export(PropertyHint.Range, "0.1,1,0.01")] public float PlayerSpeedCapFraction { get; set; } = 0.90f;
+	[Export(PropertyHint.Range, "0,20,0.1")] public float LostSightSecondsToBreakLock { get; set; } = 5.0f;
 	[Export] public float DesiredEngagementRange { get; set; } = 300.0f;
 	[Export] public float CoastStopSeconds { get; set; } = 10.0f;
 	[Export] public float DirectionChangeSeconds { get; set; } = 0.9f;
@@ -39,6 +41,7 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 	private bool _withinPhysicsWindow = true;
 	private bool _hasBeenRevealed;
 	private bool _hasTargetLock;
+	private float _lostSightSeconds;
 	private float _playerHitCombatCueSeconds;
 	private bool _destroyed;
 	private bool _fireLeftGun = true;
@@ -362,6 +365,26 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 				MoveWithCollision(Vector2.Zero, 0.0f, step);
 			return;
 		}
+		if (_hasTargetLock)
+		{
+			// A lock must be earned and retained with real line of sight. Asteroids
+			// block the same broad five-ray visibility check used for acquisition;
+			// after five seconds without sight, the player has successfully escaped.
+			if (CanSeePlayer(GlobalPosition, player.GlobalPosition))
+			{
+				_lostSightSeconds = 0.0f;
+			}
+			else
+			{
+				_lostSightSeconds += step;
+				if (_lostSightSeconds >= Mathf.Max(0.0f, LostSightSecondsToBreakLock))
+				{
+					ClearTargetLock();
+					PatrolAsteroids(step);
+					return;
+				}
+			}
+		}
 		if (ProcessTacticalDisengage(player.GlobalPosition, step))
 			return;
 		// First contact is a permanent camera-only rule. A ship may patrol outside
@@ -647,11 +670,13 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 
 	private void MoveWithCollision(Vector2 desiredDirection, float speed, float delta)
 	{
+		float speedCap = GetMovementSpeedCap();
+		speed = Mathf.Min(speed, speedCap);
 		Vector2 velocityBeforeCollision = Velocity;
 		Vector2 positionBeforeCollision = GlobalPosition;
 		if (desiredDirection.LengthSquared() <= Mathf.Epsilon || speed <= 0.0f)
 		{
-			float coastDeceleration = MoveSpeed / Mathf.Max(0.1f, CoastStopSeconds);
+			float coastDeceleration = speedCap / Mathf.Max(0.1f, CoastStopSeconds);
 			Velocity = Velocity.MoveToward(Vector2.Zero, coastDeceleration * delta);
 		}
 		else
@@ -674,14 +699,22 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 			// preference for where the hull is facing and for their existing momentum.
 			float forwardAlignment = (shipForward.Dot(desiredDirection) + 1.0f) * 0.5f;
 			desiredDirection = desiredDirection.Lerp(currentHeading, 0.18f).Lerp(shipForward, 0.52f).Normalized();
-			float driveSpeed = speed * Mathf.Lerp(0.62f, 1.22f, forwardAlignment);
+			float driveSpeed = Mathf.Min(speedCap, speed * Mathf.Lerp(0.62f, 1.22f, forwardAlignment));
 			Vector2 targetVelocity = desiredDirection * driveSpeed;
 			bool reversing = Velocity.LengthSquared() > 0.01f && Velocity.Dot(targetVelocity) < 0.0f;
-			float acceleration = MoveSpeed / Mathf.Max(0.1f, reversing ? DirectionChangeSeconds : AccelerationSeconds);
+			float acceleration = speedCap / Mathf.Max(0.1f, reversing ? DirectionChangeSeconds : AccelerationSeconds);
 			Velocity = Velocity.MoveToward(targetVelocity, acceleration * delta);
 		}
 		MoveAndSlide();
 		HandleAsteroidContacts(velocityBeforeCollision, positionBeforeCollision, delta);
+	}
+
+	private float GetMovementSpeedCap()
+	{
+		float playerSpeedCap = _player is PlayerController player
+			? player.MoveSpeed * Mathf.Clamp(PlayerSpeedCapFraction, 0.0f, 1.0f)
+			: MoveSpeed;
+		return Mathf.Max(0.0f, playerSpeedCap);
 	}
 
 	private Vector2 SteerAroundPlayer(Vector2 desiredDirection)
@@ -795,7 +828,8 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 		_collisionRecoverySeconds = 0.55f;
 		_asteroidAvoidanceDirection = _random.Randf() < 0.5f ? -1 : 1;
 		Vector2 recoveryTangent = new Vector2(-recoveryDirection.Y, recoveryDirection.X) * _asteroidAvoidanceDirection;
-		Velocity = (recoveryDirection * MoveSpeed * 0.34f + recoveryTangent * MoveSpeed * 0.16f).LimitLength(MoveSpeed * 0.45f);
+		float speedCap = GetMovementSpeedCap();
+		Velocity = (recoveryDirection * speedCap * 0.34f + recoveryTangent * speedCap * 0.16f).LimitLength(speedCap * 0.45f);
 		float maxDisplacement = velocityBeforeCollision.Length() * delta + 4.0f;
 		Vector2 displacement = GlobalPosition - positionBeforeCollision;
 		if (displacement.Length() > maxDisplacement)
@@ -1057,21 +1091,26 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 	private void EndCombatEngagement()
 	{
 		_hasTargetLock = false;
+		_lostSightSeconds = 0.0f;
 		_playerHitCombatCueSeconds = 0.0f;
 	}
 
 	private void AlertFromLinkedAlly()
 	{
-		if (!_destroyed && (_hasTargetLock || CanAcquireInitialTarget()))
+		if (_player is PlayerController player
+			&& !_destroyed
+			&& (_hasTargetLock || (CanAcquireInitialTarget() && CanSeePlayer(GlobalPosition, player.GlobalPosition))))
 			BeginPlayerAlert();
 	}
 
 	private bool CanAcquireInitialTarget()
 	{
+		MapGen? mapGenerator = GetTree().GetFirstNodeInGroup("map_generator") as MapGen;
 		return !_destroyed
 			&& _withinPhysicsWindow
 			&& _hasBeenRevealed
-			&& IsActuallyOnScreen();
+			&& IsActuallyOnScreen()
+			&& (mapGenerator == null || mapGenerator.CanEnemyShipAcquireTargetLock(this));
 	}
 
 	private void BeginPlayerAlert()
@@ -1082,6 +1121,7 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 			return;
 
 		_hasTargetLock = true;
+		_lostSightSeconds = 0.0f;
 		_engagementPriority = ++_nextEngagementPriority;
 		_burstShotsRemaining = 0;
 		_volleyCooldownSeconds = 1.0f;
