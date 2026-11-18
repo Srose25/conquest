@@ -265,5 +265,4 @@ theme_override_font_sizes/font_size = 30
 text = "Quit"
 
 [node name="Player" parent="." unique_id=1499827582 instance=ExtResource("1_80nbo")]
-visible = false
 position = Vector2(576, 324)
