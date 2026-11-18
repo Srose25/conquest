@@ -5,6 +5,8 @@ using Godot;
 [Tool]
 public partial class ExperienceBarController : Control
 {
+	[Export] public Font? DisplayFont { get; set; }
+
 	private ProgressionManager? _progression;
 	private const float BarHeight = 16.0f;
 	private const float Border = 2.0f;
@@ -33,7 +35,7 @@ public partial class ExperienceBarController : Control
 		// thin edge highlights. The XP-specific green palette is retained here.
 		float width = Size.X;
 		float height = Mathf.Min(BarHeight, Size.Y);
-		Font font = ThemeDB.FallbackFont;
+		Font font = DisplayFont ?? ThemeDB.FallbackFont;
 		int level = _progression?.Level ?? 0;
 		int experience = _progression?.Experience ?? 0;
 		int requiredExperience = _progression?.ExperienceRequired ?? ProgressionManager.ExperienceThresholds[0];

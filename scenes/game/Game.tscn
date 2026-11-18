@@ -40,6 +40,10 @@ BossLabel = "The Watcher"
 Track = ExtResource("11_07vrc")
 TempoBpm = 165.0
 
+[sub_resource type="FontVariation" id="FontVariation_oxanium_bold_xp"]
+base_font = ExtResource("7_oxanium")
+variation_embolden = 1.2
+
 [sub_resource type="FontVariation" id="FontVariation_oxanium_extra_bold"]
 base_font = ExtResource("7_oxanium")
 variation_opentype = {
@@ -105,6 +109,7 @@ offset_bottom = 5.0
 grow_vertical = 0
 mouse_filter = 2
 script = ExtResource("5_experience_bar")
+DisplayFont = SubResource("FontVariation_oxanium_bold_xp")
 
 [node name="PauseMenu" type="Control" parent="UI" unique_id=1754997044]
 process_mode = 3
@@ -265,4 +270,4 @@ theme_override_font_sizes/font_size = 30
 text = "Quit"
 
 [node name="Player" parent="." unique_id=1499827582 instance=ExtResource("1_80nbo")]
-position = Vector2(576, 324)
+position = Vector2(575, 323)
