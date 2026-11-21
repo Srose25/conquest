@@ -187,13 +187,16 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 		// it with the hull as the ship turns.
 		Vector2 belowShip = Vector2.Down.Rotated(-Rotation) * 30.0f;
 		DrawSetTransform(belowShip, -Rotation);
-		const float width = 38.0f;
+		// Twenty one-pixel cells plus their one-pixel dividers need at least
+		// 42 native pixels. Keeping the compact enemy bar on that grid prevents
+		// the CRT pass from erasing thin segments.
+		const float width = 42.0f;
 		const float height = 6.0f;
 		const float border = 1.0f;
 		int segmentCount = Mathf.Max(1, Mathf.CeilToInt(MaxHealth));
 		int filledSegments = Mathf.Clamp(Mathf.CeilToInt(_health), 0, segmentCount);
-		float divider = 0.5f;
-		float segmentWidth = (width - border * 2.0f - divider * (segmentCount - 1)) / segmentCount;
+		const float divider = 1.0f;
+		float segmentWidth = Mathf.Max(1.0f, Mathf.Floor((width - border * 2.0f - divider * (segmentCount - 1)) / segmentCount));
 		Rect2 barRect = new(-width * 0.5f, -height * 0.5f, width, height);
 		DrawRect(barRect, new Color(0.10f, 0.01f, 0.02f, _healthBarVisibility * 0.90f));
 		DrawLine(barRect.Position, barRect.Position + Vector2.Right * width, new Color(1.0f, 0.55f, 0.60f, _healthBarVisibility), 1.0f, true);

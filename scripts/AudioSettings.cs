@@ -11,6 +11,11 @@ public partial class AudioSettings : Node
 	private const string BgmKey = "bgm_volume";
 	private const string SfxKey = "sfx_volume";
 	private const string CrtFilterKey = "crt_filter_enabled";
+	private const string GraphicsSettingsVersionKey = "settings_version";
+	// Version 2 establishes the CRT filter as opt-in. The first load after this
+	// change resets the old experimental default, then preserves the player's
+	// choice normally from that point onward.
+	private const int GraphicsSettingsVersion = 2;
 	private const string BgmBusName = "BGM";
 	private const string SfxBusName = "SFX";
 
@@ -51,6 +56,19 @@ public partial class AudioSettings : Node
 			return;
 		BgmVolume = Mathf.Clamp(_settingsFile.GetValue(SettingsSection, BgmKey, DefaultVolume).AsSingle(), 0.0f, 1.0f);
 		SfxVolume = Mathf.Clamp(_settingsFile.GetValue(SettingsSection, SfxKey, DefaultVolume).AsSingle(), 0.0f, 1.0f);
+
+		int graphicsVersion = _settingsFile
+			.GetValue(GraphicsSettingsSection, GraphicsSettingsVersionKey, 0)
+			.AsInt32();
+		if (graphicsVersion < GraphicsSettingsVersion)
+		{
+			CrtEnabled = false;
+			_settingsFile.SetValue(GraphicsSettingsSection, CrtFilterKey, false);
+			_settingsFile.SetValue(GraphicsSettingsSection, GraphicsSettingsVersionKey, GraphicsSettingsVersion);
+			_settingsFile.Save(SettingsPath);
+			return;
+		}
+
 		CrtEnabled = _settingsFile.GetValue(GraphicsSettingsSection, CrtFilterKey, false).AsBool();
 	}
 
@@ -59,6 +77,7 @@ public partial class AudioSettings : Node
 		_settingsFile.SetValue(SettingsSection, BgmKey, BgmVolume);
 		_settingsFile.SetValue(SettingsSection, SfxKey, SfxVolume);
 		_settingsFile.SetValue(GraphicsSettingsSection, CrtFilterKey, CrtEnabled);
+		_settingsFile.SetValue(GraphicsSettingsSection, GraphicsSettingsVersionKey, GraphicsSettingsVersion);
 		_settingsFile.Save(SettingsPath);
 	}
 

@@ -12,6 +12,11 @@ public partial class HealthBarController : Control
 	private const float HealthBarHeight = 32.0f;
 	private const float ShieldLossAnimationSeconds = 1.0f / 8.0f;
 	private const float ShieldHitCollectionSeconds = 0.20f;
+	// The CRT pass samples at the game's native pixel grid. Keep every health
+	// cell and its divider aligned to that grid so no part can disappear during
+	// post-processing or non-integer window scaling.
+	private const float SegmentDividerWidth = 1.0f;
+	private const float MinimumSegmentPixelWidth = 1.0f;
 	[Export] public int SegmentCount { get; set; } = 20;
 
 	private PlayerController? _player;
@@ -42,11 +47,10 @@ public partial class HealthBarController : Control
 	{
 		ProcessMode = ProcessModeEnum.Always;
 		MouseFilter = MouseFilterEnum.Ignore;
-		_baseHudWidth = Size.X;
+		_baseHudWidth = Mathf.Round(Size.X);
 		const float border = 2.0f;
-		const float dividerWidth = 1.0f;
-		float segmentWidth = (_baseHudWidth - border * 2.0f - dividerWidth * (SegmentCount - 1)) / SegmentCount;
-		_segmentFootprint = segmentWidth + dividerWidth;
+		float segmentWidth = GetWholePixelSegmentWidth(_baseHudWidth, SegmentCount, border);
+		_segmentFootprint = segmentWidth + SegmentDividerWidth;
 		QueueRedraw();
 	}
 
@@ -106,14 +110,14 @@ public partial class HealthBarController : Control
 	{
 		DrawSetTransform(GetHealthHitShakeOffset());
 		const float border = 2.0f;
-		float width = Size.X;
-		float height = Mathf.Min(HealthBarHeight, Size.Y);
+		float width = Mathf.Round(Size.X);
+		float height = Mathf.Floor(Mathf.Min(HealthBarHeight, Size.Y));
 		int segmentCount = GetEffectiveSegmentCount();
 		int filledSegments = _player == null || _player.MaxHealth <= 0.0f
 			? segmentCount
 			: Mathf.Clamp(Mathf.CeilToInt(_player.Health), 0, segmentCount);
-		const float dividerWidth = 1.0f;
-		float segmentWidth = (width - border * 2.0f - dividerWidth * (segmentCount - 1)) / segmentCount;
+		float dividerWidth = SegmentDividerWidth;
+		float segmentWidth = GetWholePixelSegmentWidth(width, segmentCount, border);
 
 		DrawMetalGradient(new Rect2(Vector2.Zero, new Vector2(width, height)));
 		DrawEmptySteelFill(
@@ -407,6 +411,13 @@ public partial class HealthBarController : Control
 			Size = new Vector2(targetWidth, Size.Y);
 	}
 
+	private static float GetWholePixelSegmentWidth(float barWidth, int segmentCount, float border)
+	{
+		float availableWidth = barWidth - border * 2.0f - SegmentDividerWidth * (segmentCount - 1);
+		float requestedWidth = availableWidth / Mathf.Max(1, segmentCount);
+		return Mathf.Max(MinimumSegmentPixelWidth, Mathf.Floor(requestedWidth));
+	}
+
 	private void AdvanceHitShake(ref float elapsed, float delta)
 	{
 		if (elapsed < 0.0f)
@@ -472,15 +483,15 @@ public partial class HealthBarController : Control
 			heightFactor = 1.0f - Mathf.Ease(shrinkProgress, -1.8f);
 		}
 
-		float availableHeight = height - border * 2.0f;
+		float availableHeight = Mathf.Floor(height - border * 2.0f);
 		for (int index = 0; index < _transitionSegmentCount; index++)
 		{
 			int segment = _transitionStartSegment + index;
-			float animatedHeight = availableHeight * heightFactor;
+			float animatedHeight = Mathf.Floor(availableHeight * heightFactor);
 			if (animatedHeight <= 0.0f)
 				continue;
-			float left = border + segment * (segmentWidth + dividerWidth);
-			float top = border + (availableHeight - animatedHeight) * 0.5f;
+			float left = Mathf.Round(border + segment * (segmentWidth + dividerWidth));
+			float top = Mathf.Round(border + (availableHeight - animatedHeight) * 0.5f);
 			DrawAnimatedHealthFill(new Rect2(left, top, segmentWidth, animatedHeight), transitionColor, transitionStrength);
 		}
 	}
