@@ -11,13 +11,21 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 	[Export] public float ShieldRegenDurationSeconds { get; set; } = 5.0f;
 	[Export] public float MoveSpeed { get; set; } = 200.0f;
 	[Export(PropertyHint.Range, "0.1,1,0.01")] public float PlayerSpeedCapFraction { get; set; } = 0.90f;
+	[Export(PropertyHint.Range, "0,20,0.1")] public float InitialLockDelayMinimumSeconds { get; set; } = 3.0f;
+	[Export(PropertyHint.Range, "0,20,0.1")] public float InitialLockDelayMaximumSeconds { get; set; } = 5.0f;
+	[Export(PropertyHint.Range, "0,90,1")] public float DirectLockConeDegrees { get; set; } = 30.0f;
+	[Export] public float DirectLockAccelerationDistance { get; set; } = 360.0f;
+	[Export(PropertyHint.Range, "1,5,0.05")] public float MaximumDirectLockSpeedMultiplier { get; set; } = 2.5f;
 	[Export(PropertyHint.Range, "0,20,0.1")] public float LostSightSecondsToBreakLock { get; set; } = 5.0f;
+	[Export(PropertyHint.Range, "0,20,0.1")] public float FleeBreakLockMinimumSeconds { get; set; } = 5.0f;
+	[Export(PropertyHint.Range, "0,20,0.1")] public float FleeBreakLockMaximumSeconds { get; set; } = 10.0f;
 	[Export] public float DesiredEngagementRange { get; set; } = 300.0f;
 	[Export] public float CoastStopSeconds { get; set; } = 10.0f;
 	[Export] public float DirectionChangeSeconds { get; set; } = 0.9f;
 	[Export] public float AccelerationSeconds { get; set; } = 1.5f;
 	[Export] public float BoltSpeed { get; set; } = 470.0f;
 	[Export] public float BoltDamage { get; set; } = 1.0f;
+	[Export] public float ObstructionClearShotCooldownSeconds { get; set; } = 0.35f;
 	[Export(PropertyHint.Range, "0,1,0.05")] public float RetreatHealthFraction { get; set; } = 0.50f;
 	[Export] public int SustainedHitsToDisengage { get; set; } = 4;
 	[Export(PropertyHint.Range, "0,1,0.05")] public float RepairPelletDropChance { get; set; } = 0.35f;
@@ -27,8 +35,11 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 	[Export] public int XpDropMax { get; set; } = 15;
 	[Export] public float LinkedAllyAlertRange { get; set; } = 520.0f;
 	[Export] public PackedScene? EnemyBoltScene { get; set; }
-	[Export] public Vector2 LeftGunOffset { get; set; } = new(-8.0f, -17.0f);
-	[Export] public Vector2 RightGunOffset { get; set; } = new(8.0f, -17.0f);
+	// Enemy Sprite 1 is 32x34 and rendered at 1.5x. The red gun pixels are
+	// centered at source positions (7.5, 4.5) and (23.5, 4.5), which resolves
+	// to these exact local ship coordinates from its centered sprite origin.
+	[Export] public Vector2 LeftGunOffset { get; set; } = new(-12.0f, -18.0f);
+	[Export] public Vector2 RightGunOffset { get; set; } = new(12.0f, -18.0f);
 	[Export] public float TurnSpeedDegrees { get; set; } = 180.0f;
 	[Export] public float FiringConeDegrees { get; set; } = 28.0f;
 
@@ -41,7 +52,11 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 	private bool _withinPhysicsWindow = true;
 	private bool _hasBeenRevealed;
 	private bool _hasTargetLock;
+	private float _initialLockSightSeconds;
+	private float _requiredInitialLockSightSeconds;
 	private float _lostSightSeconds;
+	private float _playerFleeSeconds;
+	private float _requiredPlayerFleeSeconds;
 	private float _playerHitCombatCueSeconds;
 	private bool _destroyed;
 	private bool _fireLeftGun = true;
@@ -80,6 +95,9 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 	private int _asteroidAvoidanceDirection;
 	private float _collisionRecoverySeconds;
 	private Vector2 _collisionRecoveryDirection;
+	private float _obstructionClearShotCooldown;
+	private BreakableEntityController? _obstructionDecisionAsteroid;
+	private bool _clearObstructionByShooting;
 	private float _playerCollisionDamageCooldown;
 	private ShaderMaterial? _hitFlashMaterial;
 	private float _hitFlashSeconds;
@@ -118,6 +136,8 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 		_health = Mathf.Max(1.0f, MaxHealth);
 		_shield = Mathf.Max(0.0f, MaxShield);
 		_random.Randomize();
+		RollInitialLockDelay();
+		RollFleeBreakLockDelay();
 		AddToGroup("enemy_ship");
 		_player = GetTree().GetFirstNodeInGroup("player") as Node2D;
 		_screenNotifier = GetNode<VisibleOnScreenNotifier2D>("VisibleOnScreenNotifier2D");
@@ -321,6 +341,7 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 	public override void _PhysicsProcess(double delta)
 	{
 		_playerCollisionDamageCooldown = Mathf.Max(0.0f, _playerCollisionDamageCooldown - (float)delta);
+		_obstructionClearShotCooldown = Mathf.Max(0.0f, _obstructionClearShotCooldown - (float)delta);
 		UpdateShieldRegeneration((float)delta);
 		if (!_withinPhysicsWindow)
 			return;
@@ -367,10 +388,32 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 		}
 		if (_hasTargetLock)
 		{
+			// Ships are intentionally slower than the player. Maintaining a real
+			// escape course must be a viable survival strategy even in open space,
+			// where no asteroid can break line of sight.
+			if (IsPlayerFleeingFromThisShip(player))
+			{
+				_playerFleeSeconds += step;
+				if (_playerFleeSeconds >= _requiredPlayerFleeSeconds)
+				{
+					ClearTargetLock();
+					PatrolAsteroids(step);
+					return;
+				}
+			}
+			else
+			{
+				// A brief turn or strafe should not erase a nearly successful escape,
+				// but returning to attack does steadily rebuild the ship's resolve.
+				_playerFleeSeconds = Mathf.Max(0.0f, _playerFleeSeconds - step * 0.75f);
+			}
+
 			// A lock must be earned and retained with real line of sight. Asteroids
 			// block the same broad five-ray visibility check used for acquisition;
 			// after five seconds without sight, the player has successfully escaped.
-			if (CanSeePlayer(GlobalPosition, player.GlobalPosition))
+			// A ship may retain a lock for a short period after leaving the camera,
+			// but it cannot pursue forever from outside the player's view.
+			if (IsActuallyOnScreen() && CanSeePlayer(GlobalPosition, player.GlobalPosition))
 			{
 				_lostSightSeconds = 0.0f;
 			}
@@ -389,8 +432,8 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 			return;
 		// First contact is a permanent camera-only rule. A ship may patrol outside
 		// the view, but it never obtains its first combat lock there.
-		if (!_hasTargetLock && CanAcquireInitialTarget() && CanSeePlayer(GlobalPosition, player.GlobalPosition))
-			BeginPlayerAlert();
+		if (!_hasTargetLock)
+			UpdateInitialLockAcquisition(player.GlobalPosition, step);
 		if (!_hasTargetLock)
 		{
 			PatrolAsteroids(step);
@@ -779,8 +822,10 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 		if (hit.Count == 0 || !hit.TryGetValue("position", out Variant hitPositionVariant))
 		{
 			_asteroidAvoidanceSeconds = Mathf.Max(0.0f, _asteroidAvoidanceSeconds - delta);
+			ResetObstructionDecision();
 			return desiredDirection;
 		}
+		UpdateBlockingAsteroid(hit, probeDirection);
 
 		Vector2 hitPosition = hitPositionVariant.AsVector2();
 		Vector2 awayFromAsteroid = hitPosition.DirectionTo(GlobalPosition);
@@ -803,6 +848,40 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 		}
 		// Or make a more pronounced lateral strafe to find a clear firing angle.
 		return (probeDirection * 0.22f + tangent * 0.88f + awayFromAsteroid * 0.68f).Normalized();
+	}
+
+	private void UpdateBlockingAsteroid(Godot.Collections.Dictionary hit, Vector2 probeDirection)
+	{
+		if (!hit.TryGetValue("collider", out Variant colliderVariant)
+			|| colliderVariant.AsGodotObject() is not BreakableEntityController asteroid
+			|| (-GlobalTransform.Y).Dot(probeDirection) < 0.72f)
+		{
+			ResetObstructionDecision();
+			return;
+		}
+
+		if (_obstructionDecisionAsteroid != asteroid)
+		{
+			_obstructionDecisionAsteroid = asteroid;
+			// A newly spotted path blocker receives one immediate tactical choice:
+			// erase it with the guns, or preserve momentum by flying around it.
+			_clearObstructionByShooting = _random.Randf() < 0.5f;
+		}
+		if (!_clearObstructionByShooting)
+			return;
+		if (_obstructionClearShotCooldown > 0.0f)
+			return;
+
+		// This is a forward ray test, not a collision response. Ships that chose
+		// to clear the blocker begin firing before the hull reaches it.
+		if (FireAtBlockingAsteroid(asteroid))
+			_obstructionClearShotCooldown = Mathf.Max(0.05f, ObstructionClearShotCooldownSeconds);
+	}
+
+	private void ResetObstructionDecision()
+	{
+		_obstructionDecisionAsteroid = null;
+		_clearObstructionByShooting = false;
 	}
 
 	private void HandleAsteroidContacts(Vector2 velocityBeforeCollision, Vector2 positionBeforeCollision, float delta)
@@ -873,6 +952,31 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 		bolt.GlobalPosition = spawnPosition;
 		Node parent = GetTree().CurrentScene ?? GetParent();
 		parent.AddChild(bolt);
+		SoundEffectsController.PlayOneShot(this, SoundEffectsController.Effect.MainGun, -50.0f);
+	}
+
+	private bool FireAtBlockingAsteroid(BreakableEntityController asteroid)
+	{
+		if (EnemyBoltScene == null || !IsInstanceValid(asteroid))
+			return false;
+
+		Vector2 spawnPosition = ToGlobal(_fireLeftGun ? LeftGunOffset : RightGunOffset);
+		Vector2 direction = spawnPosition.DirectionTo(asteroid.GlobalPosition);
+		if (direction.LengthSquared() <= Mathf.Epsilon)
+			return false;
+		// A ship only clears something it is genuinely driving into; it never
+		// swivels around to farm asteroids behind or beside its flight path.
+		if ((-GlobalTransform.Y).Dot(direction) < 0.72f)
+			return false;
+
+		_fireLeftGun = !_fireLeftGun;
+		EnemyBoltController bolt = EnemyBoltScene.Instantiate<EnemyBoltController>();
+		bolt.Initialize(direction, BoltSpeed, BoltDamage, this);
+		bolt.GlobalPosition = spawnPosition;
+		Node parent = GetTree().CurrentScene ?? GetParent();
+		parent.AddChild(bolt);
+		SoundEffectsController.PlayOneShot(this, SoundEffectsController.Effect.MainGun, -50.0f);
+		return true;
 	}
 
 	private bool HasClearShot(Vector2 from, Vector2 to)
@@ -954,6 +1058,7 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 		if (_health <= 0.0f)
 		{
 			_destroyed = true;
+			SoundEffectsController.PlayOneShot(this, SoundEffectsController.Effect.ShipExplode);
 			EnemyShipExplosionController.Spawn(this, GlobalPosition, GlobalRotation);
 			// Enemy ships always award a random 9-15 XP, while repair pellets keep
 			// their existing independent chance and healing behavior.
@@ -1077,7 +1182,10 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 			return;
 
 		bool caughtOffGuard = !_hasTargetLock;
-		BeginPlayerAlert();
+		// A direct hit is an intentional player action, so it can wake the struck
+		// ship immediately. Passive line-of-sight acquisition still needs its
+		// full 3â€“5 second build-up below.
+		BeginPlayerAlert(true);
 		// A pair is not a guaranteed instant alarm network. A surprised ship only
 		// has a small chance to warn its partner, and that partner still has to be
 		// on camera before it can establish its first lock.
@@ -1091,16 +1199,24 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 	private void EndCombatEngagement()
 	{
 		_hasTargetLock = false;
+		_initialLockSightSeconds = 0.0f;
+		_playerFleeSeconds = 0.0f;
+		RollInitialLockDelay();
+		RollFleeBreakLockDelay();
 		_lostSightSeconds = 0.0f;
 		_playerHitCombatCueSeconds = 0.0f;
 	}
 
 	private void AlertFromLinkedAlly()
 	{
+		// A wingmate warning never bypasses first-contact rules. If this ship is
+		// visible and has clear sight, its normal acquisition timer will begin on
+		// the next physics frame; otherwise it remains on patrol.
 		if (_player is PlayerController player
 			&& !_destroyed
-			&& (_hasTargetLock || (CanAcquireInitialTarget() && CanSeePlayer(GlobalPosition, player.GlobalPosition))))
-			BeginPlayerAlert();
+			&& CanAcquireInitialTarget()
+			&& CanSeePlayer(GlobalPosition, player.GlobalPosition))
+			_initialLockSightSeconds = Mathf.Max(_initialLockSightSeconds, 0.01f);
 	}
 
 	private bool CanAcquireInitialTarget()
@@ -1113,14 +1229,76 @@ public partial class EnemyShipController : CharacterBody2D, IDamageable
 			&& (mapGenerator == null || mapGenerator.CanEnemyShipAcquireTargetLock(this));
 	}
 
-	private void BeginPlayerAlert()
+	private void UpdateInitialLockAcquisition(Vector2 playerPosition, float delta)
+	{
+		if (!CanAcquireInitialTarget() || !CanSeePlayer(GlobalPosition, playerPosition))
+		{
+			_initialLockSightSeconds = 0.0f;
+			return;
+		}
+
+		// Peripheral vision can begin an ordinary lock-on, but only a close,
+		// head-on view accelerates it. CanSeePlayer above is a five-ray asteroid
+		// occlusion test, so passing beside or behind a ship cannot get the bonus
+		// through an obstruction.
+		_initialLockSightSeconds += delta * GetInitialLockProgressMultiplier(playerPosition);
+		if (_initialLockSightSeconds >= _requiredInitialLockSightSeconds)
+			BeginPlayerAlert();
+	}
+
+	private float GetInitialLockProgressMultiplier(Vector2 playerPosition)
+	{
+		Vector2 toPlayer = GlobalPosition.DirectionTo(playerPosition);
+		if (toPlayer.LengthSquared() <= Mathf.Epsilon)
+			return 1.0f;
+
+		Vector2 forward = -GlobalTransform.Y;
+		float directThreshold = Mathf.Cos(Mathf.DegToRad(Mathf.Clamp(DirectLockConeDegrees, 0.0f, 90.0f) * 0.5f));
+		if (forward.Dot(toPlayer) < directThreshold)
+			return 1.0f;
+
+		float accelerationDistance = Mathf.Max(1.0f, DirectLockAccelerationDistance);
+		float proximity = 1.0f - Mathf.Clamp(GlobalPosition.DistanceTo(playerPosition) / accelerationDistance, 0.0f, 1.0f);
+		return Mathf.Lerp(1.0f, Mathf.Max(1.0f, MaximumDirectLockSpeedMultiplier), proximity);
+	}
+
+	private void RollInitialLockDelay()
+	{
+		float minimum = Mathf.Max(0.0f, InitialLockDelayMinimumSeconds);
+		float maximum = Mathf.Max(minimum, InitialLockDelayMaximumSeconds);
+		_requiredInitialLockSightSeconds = _random.RandfRange(minimum, maximum);
+	}
+
+	private void RollFleeBreakLockDelay()
+	{
+		float minimum = Mathf.Max(0.0f, FleeBreakLockMinimumSeconds);
+		float maximum = Mathf.Max(minimum, FleeBreakLockMaximumSeconds);
+		_requiredPlayerFleeSeconds = _random.RandfRange(minimum, maximum);
+	}
+
+	private bool IsPlayerFleeingFromThisShip(PlayerController player)
+	{
+		Vector2 velocity = player.Velocity;
+		if (velocity.LengthSquared() < 25.0f)
+			return false;
+		Vector2 awayFromShip = GlobalPosition.DirectionTo(player.GlobalPosition);
+		return awayFromShip.LengthSquared() > Mathf.Epsilon
+			&& velocity.Normalized().Dot(awayFromShip) >= 0.55f;
+	}
+
+	private void BeginPlayerAlert(bool bypassInitialDelay = false)
 	{
 		// Keep this guard in the one method that creates a lock so future AI
 		// reactions cannot accidentally reintroduce off-screen first engagement.
 		if (_hasTargetLock || !CanAcquireInitialTarget())
 			return;
+		if (!bypassInitialDelay && _initialLockSightSeconds < _requiredInitialLockSightSeconds)
+			return;
 
 		_hasTargetLock = true;
+		_initialLockSightSeconds = 0.0f;
+		_playerFleeSeconds = 0.0f;
+		RollFleeBreakLockDelay();
 		_lostSightSeconds = 0.0f;
 		_engagementPriority = ++_nextEngagementPriority;
 		_burstShotsRemaining = 0;

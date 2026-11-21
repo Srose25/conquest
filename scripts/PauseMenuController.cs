@@ -10,6 +10,9 @@ public partial class PauseMenuController : Control
 	private Control _settingsMenu = null!;
 	private HSlider _bgmSlider = null!;
 	private HSlider _sfxSlider = null!;
+	private Button _crtFilterOnButton = null!;
+	private Button _crtFilterOffButton = null!;
+	private CheckButton _developerModeToggle = null!;
 	private Label _bgmValue = null!;
 	private Label _sfxValue = null!;
 	private AudioSettings _audioSettings = null!;
@@ -21,6 +24,9 @@ public partial class PauseMenuController : Control
 		_settingsMenu = GetNode<Control>("PausePanel/SettingsMenu");
 		_bgmSlider = GetNode<HSlider>("PausePanel/SettingsMenu/BgmVolumeSlider");
 		_sfxSlider = GetNode<HSlider>("PausePanel/SettingsMenu/SfxVolumeSlider");
+		_crtFilterOnButton = GetNode<Button>("PausePanel/SettingsMenu/CrtFilterRow/CrtFilterOnButton");
+		_crtFilterOffButton = GetNode<Button>("PausePanel/SettingsMenu/CrtFilterRow/CrtFilterOffButton");
+		_developerModeToggle = GetNode<CheckButton>("PausePanel/SettingsMenu/DevModeRow/DevModeToggle");
 		_bgmValue = GetNode<Label>("PausePanel/SettingsMenu/BgmVolumeValue");
 		_sfxValue = GetNode<Label>("PausePanel/SettingsMenu/SfxVolumeValue");
 		_audioSettings = GetNode<AudioSettings>("/root/AudioSettings");
@@ -31,8 +37,15 @@ public partial class PauseMenuController : Control
 		GetNode<Button>("PausePanel/SettingsMenu/BackButton").Pressed += ShowMainMenu;
 		_bgmSlider.Value = _audioSettings.BgmVolume * 100.0f;
 		_sfxSlider.Value = _audioSettings.SfxVolume * 100.0f;
+		UpdateCrtFilterButtons(_audioSettings.CrtEnabled);
 		_bgmSlider.ValueChanged += OnBgmVolumeChanged;
 		_sfxSlider.ValueChanged += OnSfxVolumeChanged;
+		_crtFilterOnButton.Pressed += () => SetCrtFilterEnabled(true);
+		_crtFilterOffButton.Pressed += () => SetCrtFilterEnabled(false);
+		DeveloperModeController developerTools = GetNode<DeveloperModeController>("/root/DeveloperTools");
+		_developerModeToggle.Visible = DeveloperModeController.IsAvailable;
+		_developerModeToggle.ButtonPressed = developerTools.Enabled;
+		_developerModeToggle.Toggled += developerTools.SetEnabled;
 		UpdateVolumeLabels();
 	}
 
@@ -93,6 +106,28 @@ public partial class PauseMenuController : Control
 	{
 		_audioSettings.SetSfxVolume((float)value / 100.0f);
 		UpdateVolumeLabels();
+	}
+
+	private void SetCrtFilterEnabled(bool enabled)
+	{
+		_audioSettings.SetCrtEnabled(enabled);
+		UpdateCrtFilterButtons(enabled);
+	}
+
+	private void UpdateCrtFilterButtons(bool enabled)
+	{
+		_crtFilterOnButton.ButtonPressed = enabled;
+		_crtFilterOffButton.ButtonPressed = !enabled;
+		SetCrtButtonOpacity(_crtFilterOnButton, enabled);
+		SetCrtButtonOpacity(_crtFilterOffButton, !enabled);
+	}
+
+	private static void SetCrtButtonOpacity(Button button, bool selected)
+	{
+		Color color = new(1.0f, 1.0f, 1.0f, selected ? 1.0f : 0.5f);
+		button.AddThemeColorOverride("font_color", color);
+		button.AddThemeColorOverride("font_hover_color", color);
+		button.AddThemeColorOverride("font_pressed_color", color);
 	}
 
 	private void UpdateVolumeLabels()

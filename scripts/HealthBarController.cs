@@ -16,6 +16,7 @@ public partial class HealthBarController : Control
 
 	private PlayerController? _player;
 	private float _lowHealthFlashElapsed;
+	private float _shieldDepletedFlashElapsed;
 	private float _introFlashElapsed = -1.0f;
 	private bool _wasInLowHealthState;
 	private int _lastFilledSegments = -1;
@@ -71,6 +72,9 @@ public partial class HealthBarController : Control
 			{
 				_lowHealthFlashElapsed = 0.0f;
 				_introFlashElapsed = 0.0f;
+				// The one-shot begins alongside the initial triple white flash, not
+				// the recurring red low-health warning that follows it.
+				SoundEffectsController.PlayOneShot(this, SoundEffectsController.Effect.HealthAlarm, gainDb: 15.0f);
 			}
 			_lowHealthFlashElapsed += (float)delta;
 			if (_introFlashElapsed >= 0.0f)
@@ -85,6 +89,13 @@ public partial class HealthBarController : Control
 			_lowHealthFlashElapsed = 0.0f;
 			_introFlashElapsed = -1.0f;
 		}
+		bool isShieldDepleted = _player != null
+			&& !_player.IsDead
+			&& _player.MaxShield > 0.0f
+			&& _player.Shield <= 0.001f;
+		_shieldDepletedFlashElapsed = isShieldDepleted
+			? _shieldDepletedFlashElapsed + (float)delta
+			: 0.0f;
 		UpdateSegmentTransition();
 		UpdateShieldDisplay((float)delta);
 		_wasInLowHealthState = isInLowHealthState;
@@ -138,21 +149,27 @@ public partial class HealthBarController : Control
 
 		float height = healthBarHeight * 0.25f;
 		Rect2 outerRect = new(0.0f, healthBarHeight + 2.0f, width, height);
+		float depletedWarning = GetShieldDepletedFlashStrength();
+		Color warningRed = new("ff1624");
 		// Layered capsules make the bar read as an illuminated glass tube: a soft
 		// cyan halo, a bright rim, then a dark transparent-looking interior.
-		DrawCapsule(outerRect.Grow(2.0f), new Color(0.0f, 0.80f, 1.0f, 0.12f));
-		DrawCapsule(outerRect.Grow(1.0f), new Color(0.0f, 0.93f, 1.0f, 0.34f));
-		DrawCapsule(outerRect, new Color(0.12f, 0.95f, 1.0f, 1.0f));
+		if (depletedWarning > 0.0f)
+			DrawCapsule(outerRect.Grow(4.0f), new Color(warningRed, 0.28f * depletedWarning));
+		DrawCapsule(outerRect.Grow(2.0f), new Color(0.0f, 0.80f, 1.0f, 0.12f).Lerp(new Color(warningRed, 0.52f), depletedWarning));
+		DrawCapsule(outerRect.Grow(1.0f), new Color(0.0f, 0.93f, 1.0f, 0.34f).Lerp(new Color(warningRed, 0.88f), depletedWarning));
+		DrawCapsule(outerRect, new Color(0.12f, 0.95f, 1.0f, 1.0f).Lerp(warningRed, depletedWarning));
 
 		Rect2 innerRect = outerRect.GrowIndividual(-1.0f, -1.0f, -1.0f, -1.0f);
-		DrawCapsule(innerRect, new Color(0.0f, 0.08f, 0.13f, 0.94f));
+		// The empty, normally transparent-looking portion flashes red at 50%
+		// opacity too, so depletion reads across the complete shield silhouette.
+		DrawCapsule(innerRect, new Color(0.0f, 0.08f, 0.13f, 0.94f).Lerp(new Color(warningRed, 0.50f), depletedWarning));
 		float displayedShield = _displayedShield >= 0.0f ? _displayedShield : currentShield;
 		float fraction = Mathf.Clamp(displayedShield / maxShield, 0.0f, 1.0f);
 		float fillWidth = innerRect.Size.X * fraction;
 		if (fillWidth <= 0.0f)
 			return;
 
-		DrawShieldGradientFill(innerRect, fillWidth);
+		DrawShieldGradientFill(innerRect, fillWidth, depletedWarning);
 		DrawShieldLossFlash(innerRect);
 		float highlightWidth = Mathf.Max(0.0f, fillWidth - innerRect.Size.Y);
 		if (highlightWidth > 0.0f)
@@ -299,7 +316,7 @@ public partial class HealthBarController : Control
 		}
 	}
 
-	private void DrawShieldGradientFill(Rect2 rect, float fillWidth)
+	private void DrawShieldGradientFill(Rect2 rect, float fillWidth, float depletedWarning)
 	{
 		int rows = Mathf.Max(1, Mathf.CeilToInt(rect.Size.Y));
 		float rowHeight = rect.Size.Y / rows;
@@ -329,7 +346,7 @@ public partial class HealthBarController : Control
 			if (right <= left)
 				continue;
 			float t = (row + 0.5f) / rows;
-			Color rowColor = topCyan.Lerp(bottomBlue, t);
+			Color rowColor = topCyan.Lerp(bottomBlue, t).Lerp(new Color("ff1624"), depletedWarning);
 			DrawRect(new Rect2(rect.Position + new Vector2(left, row * rowHeight), new Vector2(right - left, rowHeight + 0.1f)), rowColor);
 		}
 	}
@@ -500,6 +517,19 @@ public partial class HealthBarController : Control
 		float frequency = Mathf.Lerp(1.1f, 7.0f, urgency);
 		float pulse = (Mathf.Sin(_lowHealthFlashElapsed * Mathf.Tau * frequency) + 1.0f) * 0.5f;
 		return Mathf.Lerp(0.08f, 0.92f, pulse);
+	}
+
+	private float GetShieldDepletedFlashStrength()
+	{
+		if (_player == null
+			|| _player.IsDead
+			|| _player.MaxShield <= 0.0f
+			|| _player.Shield > 0.001f)
+			return 0.0f;
+
+		// A fixed half-second sine wave keeps this distinct from the health bar's
+		// increasing low-HP urgency while still making the full tube conspicuous.
+		return (Mathf.Sin(_shieldDepletedFlashElapsed * Mathf.Tau * 2.0f) + 1.0f) * 0.5f;
 	}
 
 	private float GetIntroFlashStrength()

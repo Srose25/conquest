@@ -1,7 +1,7 @@
 [gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scripts/EnemyShipController.cs" id="1_enemy_ship"]
-[ext_resource type="Texture2D" uid="uid://c3fb34kt2cacu" path="res://Sprites/Enemy Sprite 1.png" id="2_ship"]
+[ext_resource type="Texture2D" uid="uid://cc3jfh3ntv8yu" path="res://Sprites/Enemy Sprite 1.png" id="2_ship"]
 [ext_resource type="PackedScene" path="res://scenes/combat/EnemyBolt.tscn" id="3_enemy_bolt"]
 [ext_resource type="Shader" path="res://shaders/HitFlash.gdshader" id="4_hit_flash"]
 

@@ -241,6 +241,7 @@ public partial class ActiveEnemyController : CharacterBody2D, IDamageable
 		if (player.IsDead)
 			return;
 		player.TakeDamage(AttackDamage, bypassShield: true);
+		SoundEffectsController.PlayOneShot(this, SoundEffectsController.Effect.ShipHit);
 		Destroy(false);
 	}
 
@@ -287,6 +288,7 @@ public partial class ActiveEnemyController : CharacterBody2D, IDamageable
 		if (_destroyed)
 			return;
 		_destroyed = true;
+		SoundEffectsController.PlayOneShot(this, SoundEffectsController.Effect.AsteroidExplode, -100.0f);
 		int minimum = Mathf.Max(0, ResourceYieldMin);
 		int maximum = Mathf.Max(minimum, ResourceYieldMax);
 		int yield = _random.RandiRange(minimum, maximum);

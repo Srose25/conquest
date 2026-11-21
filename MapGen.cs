@@ -17,7 +17,9 @@ public partial class MapGen : Node2D
 	[Export(PropertyHint.Range, "0,1,0.05")] public float EnemyShipSpawnChance { get; set; } = 0.4f;
 	[Export] public int EnemyShipsMinPerChunk { get; set; } = 1;
 	[Export] public int EnemyShipsMaxPerChunk { get; set; } = 2;
-	[Export] public int MaxEnemyShipsFollowingPlayer { get; set; } = 6;
+	// A readable encounter is two ships maximum. Other generated ships keep
+	// patrolling until an active pursuer disengages and frees a lock slot.
+	[Export(PropertyHint.Range, "1,6,1")] public int MaxEnemyShipsFollowingPlayer { get; set; } = 2;
 	[Export] public int EnemyShipUnlockLevel { get; set; } = 3;
 	[Export] public float ReferenceChunkSize { get; set; } = 480.0f;
 	[Export] public float PassiveDensityMultiplier { get; set; } = 1.25f;

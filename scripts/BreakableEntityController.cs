@@ -121,7 +121,7 @@ public partial class BreakableEntityController : RigidBody2D, IDamageable
 		FlashHit();
 		EmitSignal(SignalName.Damaged, amount, _health);
 		if (_health <= 0.0f)
-			Destroy();
+			Destroy(source is not EnemyBoltController);
 	}
 
 	private void FlashHit()
@@ -133,19 +133,23 @@ public partial class BreakableEntityController : RigidBody2D, IDamageable
 		_hitFlashMaterial.SetShaderParameter("flash_amount", 1.0f);
 	}
 
-	private void Destroy()
+	private void Destroy(bool awardXp)
 	{
 		if (_destroyed)
 			return;
 		_destroyed = true;
+		SoundEffectsController.PlayOneShot(this, SoundEffectsController.Effect.AsteroidExplode);
 		int minimum = Mathf.Max(0, ResourceYieldMin);
 		int maximum = Mathf.Max(minimum, ResourceYieldMax);
 		int yield = _random.RandiRange(minimum, maximum);
-		// Small asteroids always award 1-3 XP; repair pellets remain a separate,
-		// chance-based drop so the two progression systems do not share state.
-		int xpMinimum = Mathf.Max(1, XpDropMin);
-		int xpMaximum = Mathf.Max(xpMinimum, XpDropMax);
-		XpDropController.Spawn(this, GlobalPosition, _random.RandiRange(xpMinimum, xpMaximum));
+		// Enemy ships may clear an obstructing asteroid, but should never create
+		// progression pickups for the player by doing so.
+		if (awardXp)
+		{
+			int xpMinimum = Mathf.Max(1, XpDropMin);
+			int xpMaximum = Mathf.Max(xpMinimum, XpDropMax);
+			XpDropController.Spawn(this, GlobalPosition, _random.RandiRange(xpMinimum, xpMaximum));
+		}
 		int pixelMinimum = Mathf.Max(0, BreakPixelCountMin);
 		int pixelMaximum = Mathf.Max(pixelMinimum, BreakPixelCountMax);
 		BreakEffectController.Spawn(this, GlobalPosition, _random.RandiRange(pixelMinimum, pixelMaximum));

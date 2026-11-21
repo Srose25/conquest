@@ -47,10 +47,20 @@ using Godot;
 	private const float RepairFlashDuration = 0.25f;
 	private float _currentHitFlashDuration = HitFlashDuration;
 	private float _secondsSinceShieldHit;
+	private bool _shieldRechargeSoundActive;
+	private bool _shieldAlarmSoundActive;
+	private float _startingMaxHealth;
+	private float _startingMaxShield;
+	private float _startingBulletDamage;
 
 	public override void _Ready()
 	{
 		AddToGroup("player");
+		// Scaling is relative to the values configured on the starting ship, so
+		// scene balance changes automatically carry through to the level caps.
+		_startingMaxHealth = MaxHealth;
+		_startingMaxShield = MaxShield;
+		_startingBulletDamage = BulletDamage;
 		Health = Mathf.Max(1.0f, MaxHealth);
 		Shield = Mathf.Max(0.0f, MaxShield);
 		_fireCooldown = GetNode<Timer>("FireCooldown");
@@ -78,7 +88,6 @@ using Godot;
 		BulletScene ??= GD.Load<PackedScene>("res://scenes/combat/Bullet.tscn");
 		if (BulletScene == null)
 			GD.PrintErr("PlayerController could not load Bullet.tscn.");
-
 		Input.MouseMode = Input.MouseModeEnum.Hidden;
 	}
 
@@ -91,7 +100,15 @@ using Godot;
 	{
 		if (amount <= 0.0f || Health <= 0.0f)
 			return;
+		// Any fresh hit restarts the recharge delay, so its sound must be cut
+		// immediately rather than continuing through the interruption.
+		if (_shieldRechargeSoundActive)
+		{
+			SoundEffectsController.StopShieldRecharge(this);
+			_shieldRechargeSoundActive = false;
+		}
 		_secondsSinceShieldHit = 0.0f;
+		bool shieldWasAboveZero = Shield > 0.001f;
 		float remainingDamage = amount;
 		if (!bypassShield && Shield > 0.0f)
 		{
@@ -100,10 +117,21 @@ using Godot;
 			remainingDamage -= shieldDamage;
 		}
 		Health = Mathf.Max(0.0f, Health - remainingDamage);
+		// Trigger the alarm on the exact hit that takes the shield to zero. The
+		// regular Process check below remains as a safeguard for any future code
+		// path that modifies shield directly.
+		if (Health > 0.0f && MaxShield > 0.0f && shieldWasAboveZero && Shield <= 0.001f)
+		{
+			StartShieldAlarm();
+			_shieldAlarmSoundActive = true;
+		}
 		FlashHit(new Color("ff2638"));
 		EmitSignal(SignalName.Damaged, amount, Health);
 		if (Health <= 0.0f)
 		{
+			StopShieldAlarmImmediately();
+			_shieldAlarmSoundActive = false;
+			SoundEffectsController.PlayOneShot(this, SoundEffectsController.Effect.ShipExplode, -100.0f);
 			DeathExplosionController.Spawn(this, GlobalPosition, GlobalRotation);
 			EmitSignal(SignalName.Died);
 			Visible = false;
@@ -116,6 +144,7 @@ using Godot;
 	public override void _Process(double delta)
 	{
 		float step = (float)delta;
+		UpdateShieldAlarmState();
 		UpdateShieldRegeneration(step);
 		_crosshair.GlobalPosition = GetGlobalMousePosition();
 		if (_hitFlashMaterial == null)
@@ -142,7 +171,54 @@ using Godot;
 			return;
 
 		float regenerationPerSecond = MaxShield / Mathf.Max(0.1f, ShieldRegenDurationSeconds);
+		if (!_shieldRechargeSoundActive)
+		{
+			FadeOutShieldAlarm();
+			SoundEffectsController.StartShieldRecharge(this);
+			_shieldRechargeSoundActive = true;
+			_shieldAlarmSoundActive = false;
+		}
 		Shield = Mathf.Min(MaxShield, Shield + regenerationPerSecond * delta);
+		if (Shield >= MaxShield)
+		{
+			Shield = MaxShield;
+			SoundEffectsController.StopShieldRecharge(this);
+			_shieldRechargeSoundActive = false;
+		}
+	}
+
+	private void UpdateShieldAlarmState()
+	{
+		bool shieldsDepleted = !IsDead && MaxShield > 0.0f && Shield <= 0.001f;
+		if (shieldsDepleted && !_shieldAlarmSoundActive)
+		{
+			StartShieldAlarm();
+			_shieldAlarmSoundActive = true;
+		}
+		else if (!shieldsDepleted && _shieldAlarmSoundActive)
+		{
+			FadeOutShieldAlarm();
+			_shieldAlarmSoundActive = false;
+		}
+	}
+
+	private void StartShieldAlarm()
+	{
+		// Use the shared SFX voice: it is routed through the same SFX bus and
+		// lifetime management as the sounds that already play successfully.
+		SoundEffectsController.StartShieldAlarm(this);
+	}
+
+	private void FadeOutShieldAlarm()
+	{
+		SoundEffectsController.FadeOutShieldAlarm(this);
+	}
+
+	private void StopShieldAlarmImmediately()
+	{
+		// A dead player never needs the warning; beginning its normal fade is
+		// sufficient and avoids an orphaned looping voice.
+		SoundEffectsController.FadeOutShieldAlarm(this);
 	}
 
 	private void FlashHit(Color color, float duration = HitFlashDuration, float holdDuration = 0.0f)
@@ -163,25 +239,80 @@ using Godot;
 			Resources += amount;
 	}
 
-	public void RecoverHealth(float amount)
+	/// <summary>Applies the same resource, repair, and SFX behavior as a yellow repair pellet.</summary>
+	public bool CollectRepairPellet(int amount)
+	{
+		if (amount <= 0 || IsDead)
+			return false;
+		AddResources(amount);
+		bool repairedHealth = RecoverHealth(1.0f);
+		SoundEffectsController.PlayOneShot(
+			this,
+			repairedHealth
+				? SoundEffectsController.Effect.RepairPelletCollectAndRepair
+				: SoundEffectsController.Effect.RepairPelletCollect,
+			gainDb: 12.2f);
+		return repairedHealth;
+	}
+
+	public bool RecoverHealth(float amount)
 	{
 		if (amount <= 0.0f || IsDead)
-			return;
+			return false;
 
 		float previousHealth = Health;
 		Health = Mathf.Min(Mathf.Max(1.0f, MaxHealth), Health + amount);
 		if (Health > previousHealth)
+		{
 			FlashHit(new Color("26cfff"), RepairFlashDuration);
+			return true;
+		}
+		return false;
 	}
+
+#if DEBUG
+	public void DebugTakeDamageToLowHealth()
+	{
+		if (IsDead || Health <= 6.0f)
+			return;
+		float damage = Health - 6.0f;
+		TakeDamage(damage, bypassShield: true);
+		SoundEffectsController.PlayOneShot(this, SoundEffectsController.Effect.ShipHit);
+	}
+
+	public void DebugPopShieldsWithBoltDamage()
+	{
+		if (IsDead || Shield <= 0.001f)
+			return;
+		// Match an enemy bolt: standard shield damage followed by the normal
+		// player-impact sound, leaving hull HP untouched when the shield absorbs it.
+		TakeDamage(Shield);
+		SoundEffectsController.PlayOneShot(this, SoundEffectsController.Effect.ShipHit);
+	}
+
+	public void DebugSelfDestruct()
+	{
+		if (!IsDead)
+			TakeDamage(Health, bypassShield: true);
+	}
+#endif
 
 	/// <summary>Applies the automatic utility-point reward from a level-up.</summary>
 	public void ApplyLevelUpUpgrade(float healthIncrease, float shieldIncrease, float damageIncrease)
 	{
-		MaxHealth += Mathf.Max(0.0f, healthIncrease);
-		Health = Mathf.Min(MaxHealth, Health + Mathf.Max(0.0f, healthIncrease));
-		MaxShield += Mathf.Max(0.0f, shieldIncrease);
-		Shield = Mathf.Min(MaxShield, Shield + Mathf.Max(0.0f, shieldIncrease));
-		BulletDamage += Mathf.Max(0.0f, damageIncrease);
+		float healthCap = Mathf.Max(1.0f, _startingMaxHealth * 2.0f);
+		float shieldCap = Mathf.Max(0.0f, _startingMaxShield * 2.0f);
+		float damageCap = Mathf.Max(0.0f, _startingBulletDamage * 4.0f);
+
+		float appliedHealth = Mathf.Min(Mathf.Max(0.0f, healthIncrease), Mathf.Max(0.0f, healthCap - MaxHealth));
+		MaxHealth += appliedHealth;
+		Health = Mathf.Min(MaxHealth, Health + appliedHealth);
+
+		float appliedShield = Mathf.Min(Mathf.Max(0.0f, shieldIncrease), Mathf.Max(0.0f, shieldCap - MaxShield));
+		MaxShield += appliedShield;
+		Shield = Mathf.Min(MaxShield, Shield + appliedShield);
+
+		BulletDamage = Mathf.Min(damageCap, BulletDamage + Mathf.Max(0.0f, damageIncrease));
 	}
 
 	public override void _PhysicsProcess(double delta)
@@ -357,6 +488,7 @@ using Godot;
 		bullet.GlobalPosition = _muzzle.GlobalPosition;
 		Node parent = GetTree().CurrentScene ?? GetParent();
 		parent.AddChild(bullet);
+		SoundEffectsController.PlayOneShot(this, SoundEffectsController.Effect.MainGun);
 		_fireCooldown.Start();
 	}
 }

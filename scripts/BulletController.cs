@@ -61,8 +61,20 @@ public partial class BulletController : Area2D
 			damageable.TakeDamage(_damage, this);
 		else if (body.GetParent() is IDamageable parentDamageable)
 			parentDamageable.TakeDamage(_damage, this);
+		PlayImpactSound(body);
 		EmitSignal(SignalName.Hit, body);
 		QueueFree();
+	}
+
+	private void PlayImpactSound(Node body)
+	{
+		Node target = body is IDamageable ? body : body.GetParent() ?? body;
+		if (target is BreakableEntityController)
+			SoundEffectsController.PlayOneShot(this, SoundEffectsController.Effect.AsteroidHit);
+		else if (target is ActiveEnemyController)
+			SoundEffectsController.PlayOneShot(this, SoundEffectsController.Effect.AsteroidHit, -100.0f);
+		else if (target is EnemyShipController)
+			SoundEffectsController.PlayOneShot(this, SoundEffectsController.Effect.ShipHit, -50.0f);
 	}
 
 	private void OnScreenExited()

@@ -15,7 +15,9 @@ public partial class EnemyBoltController : Area2D
 	public override void _Ready()
 	{
 		CollisionLayer = 1 << 4;
-		CollisionMask = 1;
+		// Enemy shots normally target the player, but can also clear a passive
+		// asteroid that has repeatedly blocked their route.
+		CollisionMask = (1 << 0) | (1 << 1);
 		_remainingLifetime = LifetimeSeconds;
 		BodyEntered += OnBodyEntered;
 		GetNode<VisibleOnScreenNotifier2D>("VisibleOnScreenNotifier2D").ScreenExited += OnScreenExited;
@@ -47,11 +49,25 @@ public partial class EnemyBoltController : Area2D
 
 	private void OnBodyEntered(Node body)
 	{
-		if (_hasHit || body == _source || body is not PlayerController player)
+		if (_hasHit || body == _source)
 			return;
 		_hasHit = true;
 		EnemyBoltImpactController.Spawn(this, GlobalPosition);
-		player.TakeDamage(_damage);
+		if (body is PlayerController player)
+		{
+			player.TakeDamage(_damage);
+			SoundEffectsController.PlayOneShot(this, SoundEffectsController.Effect.ShipHit);
+		}
+		else if (body is BreakableEntityController asteroid)
+		{
+			asteroid.TakeDamage(_damage, this);
+			SoundEffectsController.PlayOneShot(this, SoundEffectsController.Effect.AsteroidHit);
+		}
+		else
+		{
+			_hasHit = false;
+			return;
+		}
 		QueueFree();
 	}
 

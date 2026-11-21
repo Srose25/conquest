@@ -21,6 +21,8 @@ default_bus_layout="res://default_bus_layout.tres"
 [autoload]
 
 AudioSettings="*res://scripts/AudioSettings.cs"
+SoundEffects="*res://scripts/SoundEffectsController.cs"
+DeveloperTools="*res://scripts/DeveloperModeController.cs"
 
 [display]
 

@@ -1,5 +1,6 @@
 #nullable enable
 using Godot;
+using System;
 
 /// <summary>Draws the player's XP progress and current level in the HUD.</summary>
 [Tool]
@@ -8,8 +9,17 @@ public partial class ExperienceBarController : Control
 	[Export] public Font? DisplayFont { get; set; }
 
 	private ProgressionManager? _progression;
+	private bool _levelUpPreviewActive;
+	private bool _levelUpCommitted;
+	private float _levelUpPreviewElapsed;
+	private float _levelUpPreviewDuration;
+	private int _previewLevel;
+	private int _previewExperience;
+	private int _previewRequiredExperience;
+	private Action? _levelUpPreviewCommit;
 	private const float BarHeight = 16.0f;
 	private const float Border = 2.0f;
+	private const float LevelUpFillPortion = 0.85f;
 
 	public override void _Ready()
 	{
@@ -25,7 +35,47 @@ public partial class ExperienceBarController : Control
 		// fallback values match a brand-new run's empty level-0 XP meter.
 		if (!Engine.IsEditorHint())
 			_progression ??= GetTree().CurrentScene?.GetNodeOrNull<ProgressionManager>("ProgressionManager");
+		UpdateLevelUpPreview((float)delta);
 		QueueRedraw();
+	}
+
+	/// <summary>Shows one compact fill/reset cycle before committing an XP award.
+	/// This is used by the debug F5 demonstration without bypassing progression.</summary>
+	public bool PlayLevelUpPreview(float durationSeconds, Action commitLevelUp)
+	{
+		if (_levelUpPreviewActive || _progression == null)
+			return false;
+		_levelUpPreviewActive = true;
+		_levelUpCommitted = false;
+		_levelUpPreviewElapsed = 0.0f;
+		_levelUpPreviewDuration = Mathf.Max(0.01f, durationSeconds);
+		_previewLevel = _progression.Level;
+		_previewExperience = _progression.Experience;
+		_previewRequiredExperience = _progression.ExperienceRequired;
+		_levelUpPreviewCommit = commitLevelUp;
+		return true;
+	}
+
+	private void UpdateLevelUpPreview(float delta)
+	{
+		if (!_levelUpPreviewActive)
+			return;
+		_levelUpPreviewElapsed += delta;
+		float fillDuration = _levelUpPreviewDuration * LevelUpFillPortion;
+		if (!_levelUpCommitted && _levelUpPreviewElapsed >= fillDuration)
+		{
+			_levelUpCommitted = true;
+			_levelUpPreviewCommit?.Invoke();
+			_levelUpPreviewCommit = null;
+			if (_progression != null)
+			{
+				_previewLevel = _progression.Level;
+				_previewExperience = _progression.Experience;
+				_previewRequiredExperience = _progression.ExperienceRequired;
+			}
+		}
+		if (_levelUpPreviewElapsed >= _levelUpPreviewDuration)
+			_levelUpPreviewActive = false;
 	}
 
 	public override void _Draw()
@@ -36,9 +86,13 @@ public partial class ExperienceBarController : Control
 		float width = Size.X;
 		float height = Mathf.Min(BarHeight, Size.Y);
 		Font font = DisplayFont ?? ThemeDB.FallbackFont;
-		int level = _progression?.Level ?? 0;
-		int experience = _progression?.Experience ?? 0;
-		int requiredExperience = _progression?.ExperienceRequired ?? ProgressionManager.ExperienceThresholds[0];
+		int level = _levelUpPreviewActive ? _previewLevel : _progression?.Level ?? 0;
+		int experience = _levelUpPreviewActive
+			? _levelUpCommitted
+				? _previewExperience
+				: Mathf.RoundToInt(Mathf.Lerp(_previewExperience, _previewRequiredExperience, Mathf.Clamp(_levelUpPreviewElapsed / Mathf.Max(0.01f, _levelUpPreviewDuration * LevelUpFillPortion), 0.0f, 1.0f)))
+			: _progression?.Experience ?? 0;
+		int requiredExperience = _levelUpPreviewActive ? _previewRequiredExperience : _progression?.ExperienceRequired ?? ProgressionManager.ExperienceThresholds[0];
 		string title = $"LEVEL {level}";
 		string value = $"XP {experience} / {requiredExperience}";
 		DrawString(font, new Vector2(0, 15), title, HorizontalAlignment.Left, -1, 14, Colors.White);

@@ -106,7 +106,17 @@ public partial class XpDropController : Area2D, IMagnetizableDrop
 		if (body is not PlayerController player)
 			return;
 		ProgressionManager? progression = GetTree().CurrentScene?.GetNodeOrNull<ProgressionManager>("ProgressionManager");
-		progression?.AddExperience(Amount);
+		if (progression != null)
+		{
+			progression.AddExperience(Amount);
+			// Play only once the XP has actually been applied, which is the same
+			// event that updates the XP bar rather than the earlier magnet pull.
+			SoundEffectsController.PlayOneShotWithRandomPitch(
+				this,
+				SoundEffectsController.Effect.XpCollect,
+				-50.0f,
+				50.0f);
+		}
 		EmitSignal(SignalName.Collected, Amount);
 		QueueFree();
 	}

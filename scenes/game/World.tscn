@@ -21,6 +21,7 @@ active_enemies_max_per_chunk = 5
 enemy_ship_spawn_chance = 0.4
 enemy_ships_min_per_chunk = 1
 enemy_ships_max_per_chunk = 2
+max_enemy_ships_following_player = 2
 player_clearance_radius = 240.0
 active_enemy_spawn_clearance_radius = 240.0
 safe_chunk_chance = 0.2

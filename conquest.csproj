@@ -3,5 +3,8 @@
     <TargetFramework>net8.0</TargetFramework>
     <TargetFramework Condition=" '$(GodotTargetPlatform)' == 'android' ">net9.0</TargetFramework>
     <EnableDynamicLoading>true</EnableDynamicLoading>
+    <!-- Keep offline/local exports deterministic: Godot's export logger treats
+         the unavailable NuGet audit service as a failed publish. -->
+    <NuGetAudit>false</NuGetAudit>
   </PropertyGroup>
 </Project>

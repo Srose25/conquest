@@ -95,8 +95,7 @@ public partial class ResourceDropController : Area2D, IMagnetizableDrop
 	{
 		if (body is not PlayerController player)
 			return;
-		player.AddResources(Amount);
-		player.RecoverHealth(1.0f);
+		player.CollectRepairPellet(Amount);
 		EmitSignal(SignalName.Collected, Amount);
 		QueueFree();
 	}

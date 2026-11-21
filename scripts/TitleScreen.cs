@@ -14,6 +14,9 @@ public partial class TitleScreen : Control
 	private Control _settingsPanel = null!;
 	private HSlider _bgmVolumeSlider = null!;
 	private HSlider _sfxVolumeSlider = null!;
+	private Button _crtFilterOnButton = null!;
+	private Button _crtFilterOffButton = null!;
+	private CheckButton _developerModeToggle = null!;
 	private Label _bgmVolumeValue = null!;
 	private Label _sfxVolumeValue = null!;
 	private MainMenuMusicController _mainMenuMusic = null!;
@@ -37,6 +40,9 @@ public partial class TitleScreen : Control
 		_settingsPanel = GetNode<Control>("SettingsPanel");
 		_bgmVolumeSlider = GetNode<HSlider>("SettingsPanel/Settings/BgmVolumeSlider");
 		_sfxVolumeSlider = GetNode<HSlider>("SettingsPanel/Settings/SfxVolumeSlider");
+		_crtFilterOnButton = GetNode<Button>("SettingsPanel/Settings/CrtFilterRow/CrtFilterOnButton");
+		_crtFilterOffButton = GetNode<Button>("SettingsPanel/Settings/CrtFilterRow/CrtFilterOffButton");
+		_developerModeToggle = GetNode<CheckButton>("SettingsPanel/Settings/DevModeRow/DevModeToggle");
 		_bgmVolumeValue = GetNode<Label>("SettingsPanel/Settings/BgmVolumeValue");
 		_sfxVolumeValue = GetNode<Label>("SettingsPanel/Settings/SfxVolumeValue");
 		_mainMenuMusic = GetNode<MainMenuMusicController>("MainMenuMusic");
@@ -51,8 +57,15 @@ public partial class TitleScreen : Control
 		GetNode<Button>("SettingsPanel/Settings/BackButton").Pressed += CloseSettings;
 		_bgmVolumeSlider.Value = _audioSettings.BgmVolume * 100.0f;
 		_sfxVolumeSlider.Value = _audioSettings.SfxVolume * 100.0f;
+		UpdateCrtFilterButtons(_audioSettings.CrtEnabled);
 		_bgmVolumeSlider.ValueChanged += OnBgmVolumeChanged;
 		_sfxVolumeSlider.ValueChanged += OnSfxVolumeChanged;
+		_crtFilterOnButton.Pressed += () => SetCrtFilterEnabled(true);
+		_crtFilterOffButton.Pressed += () => SetCrtFilterEnabled(false);
+		DeveloperModeController developerTools = GetNode<DeveloperModeController>("/root/DeveloperTools");
+		_developerModeToggle.Visible = DeveloperModeController.IsAvailable;
+		_developerModeToggle.ButtonPressed = developerTools.Enabled;
+		_developerModeToggle.Toggled += developerTools.SetEnabled;
 		UpdateVolumeLabels();
 		StartMainMenuMusic();
 	}
@@ -129,6 +142,28 @@ public partial class TitleScreen : Control
 	{
 		_audioSettings.SetSfxVolume((float)value / 100.0f);
 		UpdateVolumeLabels();
+	}
+
+	private void SetCrtFilterEnabled(bool enabled)
+	{
+		_audioSettings.SetCrtEnabled(enabled);
+		UpdateCrtFilterButtons(enabled);
+	}
+
+	private void UpdateCrtFilterButtons(bool enabled)
+	{
+		_crtFilterOnButton.ButtonPressed = enabled;
+		_crtFilterOffButton.ButtonPressed = !enabled;
+		SetCrtButtonOpacity(_crtFilterOnButton, enabled);
+		SetCrtButtonOpacity(_crtFilterOffButton, !enabled);
+	}
+
+	private static void SetCrtButtonOpacity(Button button, bool selected)
+	{
+		Color color = new(1.0f, 1.0f, 1.0f, selected ? 1.0f : 0.5f);
+		button.AddThemeColorOverride("font_color", color);
+		button.AddThemeColorOverride("font_hover_color", color);
+		button.AddThemeColorOverride("font_pressed_color", color);
 	}
 
 	private void UpdateVolumeLabels()

@@ -54,8 +54,8 @@ public partial class DynamicMusicController : Node
 	[Export(PropertyHint.Range, "0,20,0.1")] public float CombatReleaseCushionSeconds { get; set; } = 4.0f;
 
 	[ExportGroup("Crossfade")]
-	[Export(PropertyHint.Range, "0,4,0.01")] public float FadeInSeconds { get; set; } = 0.40f;
-	[Export(PropertyHint.Range, "0,4,0.01")] public float FadeOutSeconds { get; set; } = 0.40f;
+	[Export] public float FadeInSeconds { get; set; } = 0.40f;
+	[Export] public float FadeOutSeconds { get; set; } = 0.40f;
 
 	[ExportGroup("Cue timing")]
 	[Export(PropertyHint.Range, "30,300,0.01")] public float FallbackTempoBpm { get; set; } = 135.0f;
@@ -83,6 +83,9 @@ public partial class DynamicMusicController : Node
 	private double _pairStartTransportSeconds;
 	private double _transportSeconds;
 	private float _fadeElapsed;
+	private float _layerFadeInSeconds;
+	private float _layerFadeOutSeconds;
+	private bool _isFadingCurrentPairAtEnd;
 	private bool _isLayerMixing;
 	private float _outOfCombatStartGain;
 	private float _combatStartGain;
@@ -378,7 +381,25 @@ public partial class DynamicMusicController : Node
 
 	private void QueueNextPairAtTrackEnd()
 	{
-		if (_currentPair == null || _pendingPair != null || _pendingState != null || _fadingIn != null || _isLayerMixing)
+		if (_currentPair == null || _pendingPair != null || _pendingState != null || _fadingIn != null)
+			return;
+
+		// A pair can choose to fade itself down before its two synchronized layers
+		// finish. The next pair begins only after this one has actually ended, so
+		// its own start fade is audible instead of being an early crossfade.
+		if (!_isFadingCurrentPairAtEnd && !_isLayerMixing && _currentPair.FadeAtTrackBoundaries)
+		{
+			float remainingSeconds = GetCurrentPairRemainingSeconds();
+			float fadeOutSeconds = Mathf.Max(0.0f, _currentPair.FadeOutAtEndSeconds);
+			if (remainingSeconds >= 0.0f && remainingSeconds <= fadeOutSeconds)
+			{
+				_isFadingCurrentPairAtEnd = true;
+				BeginLayerMix(_currentState, true, fadeOutSeconds: fadeOutSeconds);
+				return;
+			}
+		}
+
+		if (_isLayerMixing)
 			return;
 
 		// Both layers of a pair must run to completion. Using a predicted stream
@@ -388,6 +409,7 @@ public partial class DynamicMusicController : Node
 		bool combatFinished = _playerB.Stream == null || !_playerB.Playing;
 		if (!explorationFinished || !combatFinished)
 			return;
+		_isFadingCurrentPairAtEnd = false;
 		QueueNextPair(_currentState, _transportSeconds);
 	}
 
@@ -411,6 +433,7 @@ public partial class DynamicMusicController : Node
 		_previousPair = _currentPair;
 		_currentPair = pair;
 		_currentState = state;
+		_isFadingCurrentPairAtEnd = false;
 		_pairStartTransportSeconds = _transportSeconds;
 		StartPairPlayback(pair, state, 0.0f, fadeIn: true);
 	}
@@ -425,6 +448,7 @@ public partial class DynamicMusicController : Node
 		}
 		_currentPair = pair;
 		_currentState = state;
+		_isFadingCurrentPairAtEnd = false;
 		_pairStartTransportSeconds = _transportSeconds;
 		StartPairPlayback(pair, state, 0.0f, fadeIn: true);
 	}
@@ -447,6 +471,7 @@ public partial class DynamicMusicController : Node
 		}
 		_currentPair = firstPair;
 		_currentState = MusicState.OutOfCombat;
+		_isFadingCurrentPairAtEnd = false;
 		_pairStartTransportSeconds = _transportSeconds;
 		StartPairPlayback(firstPair, _currentState, 0.0f, fadeIn: true);
 	}
@@ -481,7 +506,10 @@ public partial class DynamicMusicController : Node
 		{
 			_playerA.VolumeDb = SilenceDb;
 			_playerB.VolumeDb = SilenceDb;
-			BeginLayerMix(state);
+			if (pair.FadeAtTrackBoundaries)
+				BeginLayerMix(state, fadeInSeconds: pair.FadeInAtStartSeconds);
+			else
+				BeginLayerMix(state);
 		}
 		else
 		{
@@ -500,12 +528,15 @@ public partial class DynamicMusicController : Node
 		_inactivePlayer = _playerB;
 	}
 
-	private void BeginLayerMix(MusicState state, bool forceSilence = false)
+	private void BeginLayerMix(MusicState state, bool forceSilence = false, float? fadeInSeconds = null, float? fadeOutSeconds = null)
 	{
 		_fadeElapsed = 0.0f;
+		_layerFadeInSeconds = fadeInSeconds ?? FadeInSeconds;
+		_layerFadeOutSeconds = fadeOutSeconds ?? FadeOutSeconds;
 		_outOfCombatStartGain = GetLinearGain(_playerA);
 		_combatStartGain = GetLinearGain(_playerB);
-		_outOfCombatTargetGain = !forceSilence && state == MusicState.OutOfCombat && _playerA.Stream != null ? 1.0f : 0.0f;
+		bool keepExplorationLayer = state == MusicState.OutOfCombat || (_currentPair?.OverlayCombatTrack ?? false);
+		_outOfCombatTargetGain = !forceSilence && keepExplorationLayer && _playerA.Stream != null ? 1.0f : 0.0f;
 		_combatTargetGain = !forceSilence && state == MusicState.Combat && _playerB.Stream != null ? 1.0f : 0.0f;
 		_isLayerMixing = true;
 		_activePlayer = state == MusicState.Combat ? _playerB : _playerA;
@@ -595,8 +626,25 @@ public partial class DynamicMusicController : Node
 	{
 		if (Mathf.IsEqualApprox(startGain, targetGain))
 			return 1.0f;
-		float duration = targetGain > startGain ? FadeInSeconds : FadeOutSeconds;
+		float duration = targetGain > startGain ? _layerFadeInSeconds : _layerFadeOutSeconds;
 		return duration <= 0.0f ? 1.0f : Mathf.Clamp(_fadeElapsed / duration, 0.0f, 1.0f);
+	}
+
+	private float GetCurrentPairRemainingSeconds()
+	{
+		float remaining = 0.0f;
+		bool hasPlayingTrack = false;
+		foreach (AudioStreamPlayer player in new[] { _playerA, _playerB })
+		{
+			if (player.Stream == null || !player.Playing)
+				continue;
+			float length = (float)player.Stream.GetLength();
+			if (length <= 0.0f)
+				return -1.0f;
+			hasPlayingTrack = true;
+			remaining = Mathf.Max(remaining, Mathf.Max(0.0f, length - player.GetPlaybackPosition()));
+		}
+		return hasPlayingTrack ? remaining : -1.0f;
 	}
 
 	private DynamicMusicTrackPair? ChooseNextPair()

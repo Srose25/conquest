@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://dfc84xo0fwi4f"
+path="res://.godot/imported/Void Dust-Bass.ogg-7dcd664930f261f7e6ad6ee979a4b24d.oggvorbisstr"
+
+[deps]
+
+source_file="res://OST/Void Dust-Bass.ogg"
+dest_files=["res://.godot/imported/Void Dust-Bass.ogg-7dcd664930f261f7e6ad6ee979a4b24d.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0.0
+bpm=135.0
+beat_count=0
+bar_beats=4

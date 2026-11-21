@@ -5,34 +5,48 @@
 [ext_resource type="Script" uid="uid://ci26lh868jatg" path="res://scripts/HealthBarController.cs" id="3_health_bar"]
 [ext_resource type="Script" uid="uid://dul4h3cfmghyi" path="res://scripts/ProgressionManager.cs" id="4_progression"]
 [ext_resource type="Script" uid="uid://d21cmbj3y1f2y" path="res://scripts/DynamicMusicTrackPair.cs" id="4_qf6a8"]
-[ext_resource type="AudioStream" uid="uid://byi5coamhsjsr" path="res://OST/Void Dust.mp3" id="5_2iokk"]
+[ext_resource type="AudioStream" uid="uid://cmhsybbbyah55" path="res://OST/Void Dust.ogg" id="5_2iokk"]
 [ext_resource type="Script" uid="uid://41om7fdragcj" path="res://scripts/ExperienceBarController.cs" id="5_experience_bar"]
 [ext_resource type="Script" uid="uid://chfi3f55uif3p" path="res://scripts/DynamicMusicController.cs" id="6_dynamic_music"]
-[ext_resource type="AudioStream" uid="uid://b8x2ue46aaf0k" path="res://OST/Void Dust-NoDrums.mp3" id="6_vg8p7"]
-[ext_resource type="AudioStream" uid="uid://d0xobs4sp62qe" path="res://OST/Void Dust-DNB.mp3" id="7_2kuj7"]
+[ext_resource type="AudioStream" uid="uid://dl2eg43cutxea" path="res://OST/Void Dust-NoDrums.ogg" id="6_vg8p7"]
+[ext_resource type="AudioStream" uid="uid://bchk4wnrquig4" path="res://OST/Void Dust-DNB.ogg" id="7_2kuj7"]
 [ext_resource type="FontFile" uid="uid://ridev7sg7vyk" path="res://Fonts/Oxanium/Oxanium-VariableFont_wght.ttf" id="7_oxanium"]
 [ext_resource type="Script" uid="uid://du46vl2i8wgd6" path="res://scripts/PauseMenuController.cs" id="8_pause_menu"]
-[ext_resource type="AudioStream" uid="uid://d3mrfg81r1jfd" path="res://OST/Void Dust-Bass.mp3" id="8_vj8ay"]
-[ext_resource type="AudioStream" uid="uid://cp3qdy6ag6fk7" path="res://OST/Void Dust-Drums.mp3" id="9_07vrc"]
+[ext_resource type="AudioStream" uid="uid://dfc84xo0fwi4f" path="res://OST/Void Dust-Bass.ogg" id="8_vj8ay"]
+[ext_resource type="AudioStream" uid="uid://be6oi51jatwqn" path="res://OST/Void Dust-Drums.ogg" id="9_07vrc"]
 [ext_resource type="FontFile" uid="uid://dy08larodo3qa" path="res://Fonts/Rostave/RostavePersonalUse-Eaylz.otf" id="9_rostave"]
+[ext_resource type="AudioStream" uid="uid://cnv5v1ce6b5qs" path="res://OST/Conquest-Ambience.ogg" id="10_07vrc"]
 [ext_resource type="Script" uid="uid://bkvjltjsv4nqw" path="res://scripts/GameOverController.cs" id="10_game_over"]
 [ext_resource type="Script" uid="uid://coi6n3xuw0i4s" path="res://scripts/DynamicMusicBossTheme.cs" id="10_vj8ay"]
-[ext_resource type="AudioStream" uid="uid://ekawewwdrc8l" path="res://OST/Watcher.mp3" id="11_07vrc"]
+[ext_resource type="AudioStream" uid="uid://cvdiaiks67vfb" path="res://OST/Watcher.ogg" id="11_07vrc"]
+[ext_resource type="Shader" uid="uid://cexb7afuj5xch" path="res://shaders/CrtFilter.gdshader" id="12_crt_shader"]
+[ext_resource type="Script" uid="uid://b7j7dbaw0si2f" path="res://scripts/CrtOverlayController.cs" id="13_crt_overlay"]
 
 [sub_resource type="Resource" id="Resource_qf6a8"]
 script = ExtResource("4_qf6a8")
 OutOfCombatTrack = ExtResource("6_vg8p7")
 CombatTrack = ExtResource("5_2iokk")
+FadeAtTrackBoundaries = true
+FadeInAtStartSeconds = 1.5
+FadeOutAtEndSeconds = 1.5
 AlwaysLoadFirst = true
 
 [sub_resource type="Resource" id="Resource_pbrru"]
 script = ExtResource("4_qf6a8")
 OutOfCombatTrack = ExtResource("8_vj8ay")
 CombatTrack = ExtResource("7_2kuj7")
+FadeAtTrackBoundaries = true
+FadeInAtStartSeconds = 1.5
+FadeOutAtEndSeconds = 1.5
 
 [sub_resource type="Resource" id="Resource_ysuoy"]
 script = ExtResource("4_qf6a8")
+OutOfCombatTrack = ExtResource("10_07vrc")
 CombatTrack = ExtResource("9_07vrc")
+OverlayCombatTrack = true
+FadeAtTrackBoundaries = true
+FadeInAtStartSeconds = 1.5
+FadeOutAtEndSeconds = 1.5
 
 [sub_resource type="Resource" id="Resource_6k07o"]
 script = ExtResource("10_vj8ay")
@@ -53,6 +67,9 @@ variation_opentype = {
 [sub_resource type="Theme" id="Theme_pause_menu"]
 default_font = SubResource("FontVariation_oxanium_extra_bold")
 default_font_size = 30
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_crt"]
+shader = ExtResource("12_crt_shader")
 
 [node name="Game" type="Node2D" unique_id=1763646068]
 
@@ -139,9 +156,9 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -240.0
-offset_top = -225.0
+offset_top = -270.0
 offset_right = 240.0
-offset_bottom = 225.0
+offset_bottom = 270.0
 grow_horizontal = 2
 grow_vertical = 2
 theme = SubResource("Theme_pause_menu")
@@ -215,6 +232,50 @@ theme_override_fonts/font = ExtResource("7_oxanium")
 text = "50%"
 horizontal_alignment = 1
 
+[node name="CrtLabel" type="Label" parent="UI/PauseMenu/PausePanel/SettingsMenu" unique_id=1295538385]
+layout_mode = 2
+theme_override_fonts/font = SubResource("FontVariation_oxanium_extra_bold")
+text = "DISPLAY"
+
+[node name="CrtFilterRow" type="HBoxContainer" parent="UI/PauseMenu/PausePanel/SettingsMenu" unique_id=1568151500]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Label" type="Label" parent="UI/PauseMenu/PausePanel/SettingsMenu/CrtFilterRow" unique_id=1771491997]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_fonts/font = ExtResource("7_oxanium")
+text = "CRT FILTER"
+
+[node name="CrtFilterOnButton" type="Button" parent="UI/PauseMenu/PausePanel/SettingsMenu/CrtFilterRow" unique_id=1036568263]
+custom_minimum_size = Vector2(72, 32)
+layout_mode = 2
+theme_override_fonts/font = ExtResource("7_oxanium")
+toggle_mode = true
+text = "ON"
+
+[node name="CrtFilterOffButton" type="Button" parent="UI/PauseMenu/PausePanel/SettingsMenu/CrtFilterRow" unique_id=1485341394]
+custom_minimum_size = Vector2(72, 32)
+layout_mode = 2
+theme_override_fonts/font = ExtResource("7_oxanium")
+toggle_mode = true
+text = "OFF"
+
+[node name="DevModeRow" type="HBoxContainer" parent="UI/PauseMenu/PausePanel/SettingsMenu"]
+layout_mode = 2
+alignment = 2
+
+[node name="DevModeToggle" type="CheckButton" parent="UI/PauseMenu/PausePanel/SettingsMenu/DevModeRow"]
+custom_minimum_size = Vector2(0, 16)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 0.28)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 0.5)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 0.5)
+theme_override_font_sizes/font_size = 12
+theme_override_fonts/font = ExtResource("7_oxanium")
+tooltip_text = "Dev mode: F1 low HP, F2 repair pellet, F3 pop shields, F4 self destruct, F5 level up"
+text = "DEV MODE"
+
 [node name="BackButton" type="Button" parent="UI/PauseMenu/PausePanel/SettingsMenu" unique_id=2011034138]
 custom_minimum_size = Vector2(0, 58)
 layout_mode = 2
@@ -271,3 +332,16 @@ text = "Quit"
 
 [node name="Player" parent="." unique_id=1499827582 instance=ExtResource("1_80nbo")]
 position = Vector2(575, 323)
+
+[node name="CrtOverlay" type="CanvasLayer" parent="." unique_id=1287564054]
+layer = 100
+
+[node name="Filter" type="ColorRect" parent="CrtOverlay" unique_id=1086953228]
+material = SubResource("ShaderMaterial_crt")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("13_crt_overlay")
