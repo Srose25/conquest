@@ -21,6 +21,7 @@
 [ext_resource type="AudioStream" uid="uid://cvdiaiks67vfb" path="res://OST/Watcher.ogg" id="11_07vrc"]
 [ext_resource type="Shader" uid="uid://cexb7afuj5xch" path="res://shaders/CrtFilter.gdshader" id="12_crt_shader"]
 [ext_resource type="Script" uid="uid://b7j7dbaw0si2f" path="res://scripts/CrtOverlayController.cs" id="13_crt_overlay"]
+[ext_resource type="Script" path="res://scripts/CompactTooltipCheckButton.cs" id="14_compact_tooltip"]
 
 [sub_resource type="Resource" id="Resource_qf6a8"]
 script = ExtResource("4_qf6a8")
@@ -63,6 +64,10 @@ base_font = ExtResource("7_oxanium")
 variation_opentype = {
 "wght": 800
 }
+
+[sub_resource type="FontVariation" id="FontVariation_oxanium_bold_game_over"]
+base_font = ExtResource("7_oxanium")
+variation_embolden = 1.2
 
 [sub_resource type="Theme" id="Theme_pause_menu"]
 default_font = SubResource("FontVariation_oxanium_extra_bold")
@@ -273,8 +278,9 @@ theme_override_colors/font_hover_color = Color(1, 1, 1, 0.5)
 theme_override_colors/font_pressed_color = Color(1, 1, 1, 0.5)
 theme_override_font_sizes/font_size = 12
 theme_override_fonts/font = ExtResource("7_oxanium")
-tooltip_text = "Dev mode: F1 low HP, F2 repair pellet, F3 pop shields, F4 self destruct, F5 level up"
+tooltip_text = "Dev mode: F1 low HP, F2 repair pellet, F3 pop shields, F4 self destruct, F5 level up, F6 enemy rays"
 text = "DEV MODE"
+script = ExtResource("14_compact_tooltip")
 
 [node name="BackButton" type="Button" parent="UI/PauseMenu/PausePanel/SettingsMenu" unique_id=2011034138]
 custom_minimum_size = Vector2(0, 58)
@@ -319,14 +325,14 @@ vertical_alignment = 1
 [node name="RetryButton" type="Button" parent="UI/GameOver/Center/Menu" unique_id=1545927792]
 custom_minimum_size = Vector2(0, 62)
 layout_mode = 2
-theme_override_fonts/font = ExtResource("7_oxanium")
+theme_override_fonts/font = SubResource("FontVariation_oxanium_bold_game_over")
 theme_override_font_sizes/font_size = 30
 text = "Retry"
 
 [node name="QuitButton" type="Button" parent="UI/GameOver/Center/Menu" unique_id=724746815]
 custom_minimum_size = Vector2(0, 62)
 layout_mode = 2
-theme_override_fonts/font = ExtResource("7_oxanium")
+theme_override_fonts/font = SubResource("FontVariation_oxanium_bold_game_over")
 theme_override_font_sizes/font_size = 30
 text = "Quit"
 

@@ -83,6 +83,8 @@ public partial class DynamicMusicController : Node
 	private double _pairStartTransportSeconds;
 	private double _transportSeconds;
 	private float _fadeElapsed;
+	private float _automaticStatePollElapsed;
+	private const float AutomaticStatePollIntervalSeconds = 0.10f;
 	private float _layerFadeInSeconds;
 	private float _layerFadeOutSeconds;
 	private bool _isFadingCurrentPairAtEnd;
@@ -218,7 +220,18 @@ public partial class DynamicMusicController : Node
 		}
 
 		if (_pendingBossTrack == null)
-			UpdateAutomaticState((float)delta);
+		{
+			// Tracker/ship group scans do not need to happen every rendered frame.
+			// Ten samples per second keeps combat cueing responsive while eliminating
+			// another always-on tree traversal.
+			_automaticStatePollElapsed += (float)delta;
+			if (_automaticStatePollElapsed >= AutomaticStatePollIntervalSeconds)
+			{
+				float elapsed = _automaticStatePollElapsed;
+				_automaticStatePollElapsed = 0.0f;
+				UpdateAutomaticState(elapsed);
+			}
+		}
 		if (_pendingState != null && _transportSeconds >= _pendingCueTime)
 			BeginStateTransition(_pendingState.Value);
 		else if (_pendingPair != null && _transportSeconds >= _pendingCueTime)

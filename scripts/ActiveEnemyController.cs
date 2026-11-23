@@ -69,6 +69,8 @@ public partial class ActiveEnemyController : CharacterBody2D, IDamageable
 		AddToGroup("tracker");
 		Velocity = Vector2.Zero;
 		SetTrackerCollisionEnabled(IsActuallyOnScreen());
+		// Trackers only need _Process while their brief white hit flash is active.
+		SetProcess(false);
 	}
 
 	public override void _Process(double delta)
@@ -77,6 +79,8 @@ public partial class ActiveEnemyController : CharacterBody2D, IDamageable
 			return;
 		_hitFlashSeconds = Mathf.Max(0.0f, _hitFlashSeconds - (float)delta);
 		_hitFlashMaterial.SetShaderParameter("flash_amount", _hitFlashSeconds / HitFlashDuration);
+		if (_hitFlashSeconds <= 0.0f)
+			SetProcess(false);
 	}
 
 	private void OnTrackerScreenEntered()
@@ -219,6 +223,7 @@ public partial class ActiveEnemyController : CharacterBody2D, IDamageable
 		_hitFlashSeconds = HitFlashDuration;
 		_hitFlashMaterial.SetShaderParameter("flash_color", Colors.White);
 		_hitFlashMaterial.SetShaderParameter("flash_amount", 1.0f);
+		SetProcess(true);
 	}
 
 	private void OnAttackTimerTimeout()

@@ -246,6 +246,10 @@ using Godot;
 			return false;
 		AddResources(amount);
 		bool repairedHealth = RecoverHealth(1.0f);
+		// A repair pellet also jump-starts shield recovery. This deliberately clears
+		// any remaining post-hit delay even when the pellet cannot restore hull HP,
+		// so the normal pickup and development-mode F2 simulation match exactly.
+		StartShieldRegenerationImmediately();
 		SoundEffectsController.PlayOneShot(
 			this,
 			repairedHealth
@@ -253,6 +257,17 @@ using Godot;
 				: SoundEffectsController.Effect.RepairPelletCollect,
 			gainDb: 12.2f);
 		return repairedHealth;
+	}
+
+	private void StartShieldRegenerationImmediately()
+	{
+		if (Shield >= MaxShield || MaxShield <= 0.0f)
+			return;
+		_secondsSinceShieldHit = Mathf.Max(0.0f, ShieldRegenDelaySeconds);
+		// Starting with a zero delta begins the recharge sound and fades a depleted
+		// shield's alarm now; the normal Process tick applies the first recharge
+		// amount on the following frame at the unchanged regeneration speed.
+		UpdateShieldRegeneration(0.0f);
 	}
 
 	public bool RecoverHealth(float amount)

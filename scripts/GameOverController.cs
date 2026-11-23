@@ -5,9 +5,9 @@ using Godot;
 public partial class GameOverController : Control
 {
 	private const string TitleScenePath = "res://scenes/TitleScreen.tscn";
-	private const float GameOverFadeSeconds = 5.0f;
-	private const float ButtonStaggerSeconds = 0.5f;
-	private const float ButtonPopSeconds = 0.20f;
+	private const float GameOverFadeSeconds = 2.5f;
+	private const float ButtonStaggerSeconds = 0.25f;
+	private const float ButtonPopSeconds = 0.10f;
 
 	private Label _heading = null!;
 	private Button _retryButton = null!;

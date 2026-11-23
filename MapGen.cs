@@ -30,6 +30,8 @@ public partial class MapGen : Node2D
 	private readonly HashSet<Vector2I> _generatedChunks = new();
 	private readonly HashSet<Vector2I> _queuedChunks = new();
 	private readonly Queue<ChunkRequest> _pendingChunks = new();
+	private readonly HashSet<Vector2I> _queuedEnemyShipChunks = new();
+	private readonly Queue<EnemyShipSpawnRequest> _pendingEnemyShipSpawns = new();
 	private readonly Dictionary<Vector2I, int> _chunkVisitCounts = new();
 	private readonly Dictionary<Vector2I, int> _enemyShipSpawnAttempts = new();
 	private readonly RandomNumberGenerator _random = new();
@@ -47,6 +49,18 @@ public partial class MapGen : Node2D
 		public readonly bool IsInitialGeneration;
 
 		public ChunkRequest(Vector2I coordinate, bool isInitialGeneration)
+		{
+			Coordinate = coordinate;
+			IsInitialGeneration = isInitialGeneration;
+		}
+	}
+
+	private readonly struct EnemyShipSpawnRequest
+	{
+		public readonly Vector2I Coordinate;
+		public readonly bool IsInitialGeneration;
+
+		public EnemyShipSpawnRequest(Vector2I coordinate, bool isInitialGeneration)
 		{
 			Coordinate = coordinate;
 			IsInitialGeneration = isInitialGeneration;
@@ -73,8 +87,9 @@ public partial class MapGen : Node2D
 			return;
 
 		Vector2I playerChunk = GetChunk(_player!.GlobalPosition);
-		UpdateHostileAvailability(playerChunk);
-		if (playerChunk != _lastPlayerChunk)
+		bool hostileAvailabilityChanged = UpdateHostileAvailability(playerChunk);
+		bool playerChangedChunk = playerChunk != _lastPlayerChunk;
+		if (playerChangedChunk)
 		{
 			bool firstChunkEntry = _lastPlayerChunk.X == int.MinValue;
 			if (firstChunkEntry)
@@ -87,19 +102,31 @@ public partial class MapGen : Node2D
 				SpawnHostilesForChunksLeavingProtectionBox(_lastPlayerChunk, playerChunk);
 			_lastPlayerChunk = playerChunk;
 		}
-		ProcessGenerationQueue(playerChunk);
-		UpdatePhysicsWindow(playerChunk);
-		RemoveTrackersOutsideActiveRadius(playerChunk);
-		RemovePassiveAsteroidsOutsideActiveRadius(playerChunk);
+		// Spread ship scene creation over successive frames. In particular, level
+		// unlocks can make the whole outer ring eligible at once; instantiating all
+		// of those ships synchronously was the hitch felt when a ship "loaded".
+		ProcessEnemyShipSpawnQueue(playerChunk);
+		bool generatedChunk = ProcessGenerationQueue(playerChunk);
+		// These routines walk every generated entity. They only need to run when
+		// the 5x5 window actually changes or a queued chunk has just entered it;
+		// doing so every rendered frame was repeatedly scanning hundreds of idle
+		// asteroids while the player remained inside one chunk.
+		if (playerChangedChunk || generatedChunk || hostileAvailabilityChanged)
+		{
+			UpdatePhysicsWindow(playerChunk);
+			RemoveTrackersOutsideActiveRadius(playerChunk);
+			RemovePassiveAsteroidsOutsideActiveRadius(playerChunk);
+		}
 		QueueRedraw();
 	}
 
-	private void UpdateHostileAvailability(Vector2I playerChunk)
+	private bool UpdateHostileAvailability(Vector2I playerChunk)
 	{
 		_progression ??= GetTree().GetFirstNodeInGroup("progression_manager") as ProgressionManager;
 		_progression ??= GetTree().CurrentScene?.GetNodeOrNull<ProgressionManager>("ProgressionManager");
 		if (_progression == null)
-			return;
+			return false;
+		bool availabilityChanged = false;
 
 		// A run can level up without crossing a chunk boundary. Unlocking either
 		// hostile type populates only the outer ring, preserving the nearby 3x3
@@ -107,6 +134,7 @@ public partial class MapGen : Node2D
 		if (!_trackersUnlocked && _progression.Level >= Mathf.Max(1, TrackerUnlockLevel))
 		{
 			_trackersUnlocked = true;
+			availabilityChanged = true;
 			// Some chunks were already generated while trackers were locked. Roll
 			// those eligible chunks immediately so level 2 always activates tracker
 			// spawning without waiting for the player to leave them behind.
@@ -115,8 +143,10 @@ public partial class MapGen : Node2D
 		if (!_enemyShipsUnlocked && _progression.Level >= Mathf.Max(1, EnemyShipUnlockLevel))
 		{
 			_enemyShipsUnlocked = true;
+			availabilityChanged = true;
 			SpawnEnemyShipsForOuterRing(playerChunk);
 		}
+		return availabilityChanged;
 	}
 
 	public override void _Draw()
@@ -175,7 +205,7 @@ public partial class MapGen : Node2D
 		_pendingChunks.Enqueue(new ChunkRequest(chunk, isInitialGeneration));
 	}
 
-	private void ProcessGenerationQueue(Vector2I playerChunk)
+	private bool ProcessGenerationQueue(Vector2I playerChunk)
 	{
 		int radius = Mathf.Max(0, GenerationRadius);
 		while (_pendingChunks.Count > 0)
@@ -185,8 +215,24 @@ public partial class MapGen : Node2D
 			if (Mathf.Abs(request.Coordinate.X - playerChunk.X) > radius || Mathf.Abs(request.Coordinate.Y - playerChunk.Y) > radius)
 				continue;
 			GenerateChunk(request.Coordinate, request.IsInitialGeneration);
-			return;
+			return true;
 		}
+		return false;
+	}
+
+	private bool ProcessEnemyShipSpawnQueue(Vector2I playerChunk)
+	{
+		int radius = Mathf.Max(0, GenerationRadius);
+		while (_pendingEnemyShipSpawns.Count > 0)
+		{
+			EnemyShipSpawnRequest request = _pendingEnemyShipSpawns.Dequeue();
+			_queuedEnemyShipChunks.Remove(request.Coordinate);
+			if (GetChunkDistance(request.Coordinate, playerChunk) > radius)
+				continue;
+			SpawnEnemyShipsForChunkNow(request.Coordinate, request.IsInitialGeneration);
+			return true;
+		}
+		return false;
 	}
 
 	private void SpawnTrackersForChunkVisit(Vector2I chunk)
@@ -279,7 +325,8 @@ public partial class MapGen : Node2D
 		float trackerClearance = Mathf.Max(ActiveEnemySpawnClearanceRadius, GetChunkHalfClearance());
 		int trackerCount = random.RandiRange(Mathf.Max(1, ActiveEnemiesMinPerChunk), Mathf.Max(1, ActiveEnemiesMaxPerChunk));
 		for (int i = 0; i < trackerCount; i++)
-			SpawnEntity(ActiveEnemyScene, _activeEntities, $"Active_{chunk.X}_{chunk.Y}_{nameSuffix}_{i}", chunk, random, trackerClearance);
+			SpawnEntity(ActiveEnemyScene, _activeEntities, $"Active_{chunk.X}_{chunk.Y}_{nameSuffix}_{i}", chunk, random, trackerClearance,
+				avoidWorldObjectOverlap: true, collisionRadius: 22.0f);
 	}
 
 	private bool HasTrackerInChunk(Vector2I chunk)
@@ -388,6 +435,14 @@ public partial class MapGen : Node2D
 
 	private void SpawnEnemyShipsForChunk(Vector2I chunk, bool isInitialGeneration)
 	{
+		if (!_enemyShipsUnlocked || EnemyShipScene == null || HasEnemyShipInChunk(chunk)
+			|| !_queuedEnemyShipChunks.Add(chunk))
+			return;
+		_pendingEnemyShipSpawns.Enqueue(new EnemyShipSpawnRequest(chunk, isInitialGeneration));
+	}
+
+	private void SpawnEnemyShipsForChunkNow(Vector2I chunk, bool isInitialGeneration)
+	{
 		if (!_enemyShipsUnlocked || EnemyShipScene == null || HasEnemyShipInChunk(chunk))
 			return;
 		int spawnAttempt = _enemyShipSpawnAttempts.GetValueOrDefault(chunk) + 1;
@@ -403,14 +458,28 @@ public partial class MapGen : Node2D
 		List<EnemyShipController> spawnedShips = new();
 		for (int i = 0; i < count; i++)
 		{
-			if (SpawnEntity(EnemyShipScene, _activeEntities, $"EnemyShip_{chunk.X}_{chunk.Y}_{i}", chunk, random, clearance) is EnemyShipController ship)
+			if (SpawnEntity(EnemyShipScene, _activeEntities, $"EnemyShip_{chunk.X}_{chunk.Y}_{i}", chunk, random, clearance,
+				avoidWorldObjectOverlap: true, collisionRadius: 18.0f) is EnemyShipController ship)
+			{
+				ConfigureSpawnedEnemyShipPhysics(ship);
 				spawnedShips.Add(ship);
+			}
 		}
 		if (spawnedShips.Count == 2)
 		{
 			spawnedShips[0].LinkWith(spawnedShips[1]);
 			spawnedShips[1].LinkWith(spawnedShips[0]);
 		}
+	}
+
+	private void ConfigureSpawnedEnemyShipPhysics(EnemyShipController ship)
+	{
+		if (_player == null || !IsInstanceValid(ship))
+			return;
+		const int physicsRadius = 1;
+		const int trackingRadius = 5;
+		int distance = GetChunkDistance(GetChunk(ship.GlobalPosition), GetChunk(_player.GlobalPosition));
+		ship.SetWithinPhysicsWindow(distance <= physicsRadius || (ship.HasTargetLock && distance < trackingRadius));
 	}
 
 	private bool HasEnemyShipInChunk(Vector2I chunk)
@@ -461,24 +530,35 @@ public partial class MapGen : Node2D
 
 	private float GetChunkHalfClearance() => Mathf.Min(ChunkSize.X, ChunkSize.Y) * 0.5f;
 
-	private Node2D? SpawnEntity(PackedScene scene, Node2D container, string entityName, Vector2I chunk, RandomNumberGenerator random, float playerClearance)
+	private Node2D? SpawnEntity(
+		PackedScene scene,
+		Node2D container,
+		string entityName,
+		Vector2I chunk,
+		RandomNumberGenerator random,
+		float playerClearance,
+		bool avoidWorldObjectOverlap = false,
+		float collisionRadius = 22.0f)
 	{
 		Vector2? spawnPosition = null;
-		for (int attempt = 0; attempt < 30; attempt++)
+		// Chunks are sparse, so a small bounded probe count finds an open point
+		// without causing a visible hitch by repeatedly scanning the whole map as a
+		// tracker or ship is loaded.
+		for (int attempt = 0; attempt < 10; attempt++)
 		{
 			Vector2 position = new(
 				chunk.X * ChunkSize.X + _randomChunkCoordinate(random, ChunkSize.X),
 				chunk.Y * ChunkSize.Y + _randomChunkCoordinate(random, ChunkSize.Y));
 			if (_player != null && position.DistanceTo(_player.GlobalPosition) < playerClearance)
 				continue;
-			if (IsSpawnPositionFree(container, position))
+			if (IsSpawnPositionFree(container, position, collisionRadius, avoidWorldObjectOverlap))
 			{
 				spawnPosition = position;
 				break;
 			}
 		}
 		if (spawnPosition == null)
-			spawnPosition = FindChunkEdgeSpawnPosition(container, chunk, playerClearance);
+			spawnPosition = FindChunkEdgeSpawnPosition(container, chunk, playerClearance, collisionRadius, avoidWorldObjectOverlap);
 		if (spawnPosition == null)
 			return null;
 
@@ -496,7 +576,12 @@ public partial class MapGen : Node2D
 		return entity;
 	}
 
-	private Vector2? FindChunkEdgeSpawnPosition(Node2D container, Vector2I chunk, float playerClearance)
+	private Vector2? FindChunkEdgeSpawnPosition(
+		Node2D container,
+		Vector2I chunk,
+		float playerClearance,
+		float collisionRadius,
+		bool avoidWorldObjectOverlap)
 	{
 		Vector2 origin = new(chunk.X * ChunkSize.X, chunk.Y * ChunkSize.Y);
 		Vector2[] candidates =
@@ -508,20 +593,67 @@ public partial class MapGen : Node2D
 		};
 		foreach (Vector2 candidate in candidates)
 		{
-			if ((_player == null || candidate.DistanceTo(_player.GlobalPosition) >= playerClearance) && IsSpawnPositionFree(container, candidate))
+			if ((_player == null || candidate.DistanceTo(_player.GlobalPosition) >= playerClearance)
+				&& IsSpawnPositionFree(container, candidate, collisionRadius, avoidWorldObjectOverlap))
 				return candidate;
 		}
 		return null;
 	}
 
-	private static bool IsSpawnPositionFree(Node2D container, Vector2 position)
+	private bool IsSpawnPositionFree(Node2D container, Vector2 position, float collisionRadius, bool avoidWorldObjectOverlap)
 	{
 		foreach (Node child in container.GetChildren())
 		{
 			if (child is Node2D other && other.GlobalPosition.DistanceTo(position) < 72.0f)
 				return false;
 		}
-		return true;
+
+		if (!avoidWorldObjectOverlap)
+			return true;
+
+		// Trackers and ships must never materialize inside any already-generated
+		// collider. The explicit container checks catch entities added this frame
+		// before the physics server has synchronized. Avoid scanning the container
+		// we already checked above a second time (the active-hostile case).
+		if ((container != _passiveEntities && OverlapsSpawnedEntity(_passiveEntities, position, collisionRadius))
+			|| (container != _activeEntities && OverlapsSpawnedEntity(_activeEntities, position, collisionRadius))
+			|| (_player != null && OverlapsNode(_player, position, collisionRadius)))
+			return false;
+
+		CircleShape2D shape = new() { Radius = collisionRadius };
+		PhysicsShapeQueryParameters2D query = new()
+		{
+			Shape = shape,
+			Transform = new Transform2D(0.0f, position),
+			CollisionMask = uint.MaxValue,
+			CollideWithBodies = true,
+			CollideWithAreas = true
+		};
+		return GetWorld2D().DirectSpaceState.IntersectShape(query, 1).Count == 0;
+	}
+
+	private static bool OverlapsSpawnedEntity(Node2D container, Vector2 position, float collisionRadius)
+	{
+		foreach (Node child in container.GetChildren())
+		{
+			if (child is Node2D other && OverlapsNode(other, position, collisionRadius))
+				return true;
+		}
+		return false;
+	}
+
+	private static bool OverlapsNode(Node2D node, Vector2 position, float collisionRadius)
+	{
+		CollisionShape2D? collider = node.GetNodeOrNull<CollisionShape2D>("CollisionShape2D");
+		if (collider?.Shape == null || collider.Disabled)
+			return false;
+		float otherRadius = collider.Shape switch
+		{
+			CircleShape2D circle => circle.Radius * Mathf.Max(Mathf.Abs(node.GlobalScale.X), Mathf.Abs(node.GlobalScale.Y)),
+			RectangleShape2D rectangle => rectangle.Size.Length() * 0.5f * Mathf.Max(Mathf.Abs(node.GlobalScale.X), Mathf.Abs(node.GlobalScale.Y)),
+			_ => 22.0f
+		};
+		return node.GlobalPosition.DistanceTo(position) < collisionRadius + otherRadius;
 	}
 
 	private static float _randomChunkCoordinate(RandomNumberGenerator random, float dimension)

@@ -10,6 +10,7 @@
 [ext_resource type="Script" uid="uid://d30ct6rpcuo0o" path="res://scripts/MainMenuMusicController.cs" id="9_main_menu_music"]
 [ext_resource type="Shader" path="res://shaders/CrtFilter.gdshader" id="10_crt_shader"]
 [ext_resource type="Script" path="res://scripts/CrtOverlayController.cs" id="11_crt_overlay"]
+[ext_resource type="Script" path="res://scripts/CompactTooltipCheckButton.cs" id="12_compact_tooltip"]
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_additive"]
 blend_mode = 1
@@ -225,8 +226,9 @@ theme_override_colors/font_hover_color = Color(1, 1, 1, 0.5)
 theme_override_colors/font_pressed_color = Color(1, 1, 1, 0.5)
 theme_override_font_sizes/font_size = 12
 theme_override_fonts/font = ExtResource("8_oxanium")
-tooltip_text = "Dev mode: F1 low HP, F2 repair pellet, F3 pop shields, F4 self destruct, F5 level up"
+tooltip_text = "Dev mode: F1 low HP, F2 repair pellet, F3 pop shields, F4 self destruct, F5 level up, F6 enemy rays"
 text = "DEV MODE"
+script = ExtResource("12_compact_tooltip")
 
 [node name="BackButton" type="Button" parent="SettingsPanel/Settings" unique_id=196028422]
 custom_minimum_size = Vector2(0, 58)

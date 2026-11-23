@@ -53,6 +53,9 @@ public partial class BreakableEntityController : RigidBody2D, IDamageable
 			_hitFlashMaterial.SetShaderParameter("flash_amount", 0.0f);
 		}
 		SetSimulationEnabled(true);
+		// Hit-flash animation is the only per-frame visual work this asteroid
+		// needs. Thousands of idle C# _Process callbacks add up quickly.
+		SetProcess(false);
 	}
 
 	public override void _Process(double delta)
@@ -61,6 +64,8 @@ public partial class BreakableEntityController : RigidBody2D, IDamageable
 			return;
 		_hitFlashSeconds = Mathf.Max(0.0f, _hitFlashSeconds - (float)delta);
 		_hitFlashMaterial.SetShaderParameter("flash_amount", _hitFlashSeconds / HitFlashDuration);
+		if (_hitFlashSeconds <= 0.0f)
+			SetProcess(false);
 	}
 
 	public void SetSimulationEnabled(bool enabled)
@@ -131,6 +136,7 @@ public partial class BreakableEntityController : RigidBody2D, IDamageable
 		_hitFlashSeconds = HitFlashDuration;
 		_hitFlashMaterial.SetShaderParameter("flash_color", Colors.White);
 		_hitFlashMaterial.SetShaderParameter("flash_amount", 1.0f);
+		SetProcess(true);
 	}
 
 	private void Destroy(bool awardXp)
